@@ -37,6 +37,12 @@ QuickShield provides parametric income protection for gig workers.
 - Model: Uses weekly policy pricing based on expected risk, selected coverage, and rider earnings patterns.
 - Mechanism: Detects trigger events through weather, platform outage, civic, and platform activity data, then initiates automated claim logic.
 
+## Why Mobile-First?
+
+- Riders operate on smartphones during shifts
+- Real-time alerts and payouts require mobile notifications
+- GPS validation is easier via mobile devices
+
 ## Tech Stack
 
 | Layer | Choice |
@@ -138,6 +144,29 @@ Example:
 
 If S3 is disrupted from 6 PM to 7 PM due to heavy rain, the rider receives a partial payout for 1 disrupted hour rather than a full-day payout.
 
+## Example Persona Scenario
+
+Ravi is a Zepto delivery partner in Bengaluru earning Rs 850 per day. On a rainy evening during the 6 PM to 8 PM peak slot, heavy rain greater than 25 mm per hour stops deliveries for 1 hour.
+
+QuickShield detects:
+
+- Rain trigger activated
+- Ravi active in zone
+
+The system then auto-triggers the payout:
+
+- Rs 750 per day coverage
+- Rs 93.75 per hour payout rate
+- Ravi gets Rs 93.75 instantly
+
+## AI Flow in Workflow
+
+- Rider earnings, zone history, and forecast data are collected
+- AI model calculates risk score -> feeds premium engine
+- Premium engine computes the weekly premium and coverage recommendation
+- Trigger services monitor live disruption signals
+- Claims workflow validates eligibility and simulates or initiates payout
+
 ## AI and ML Roadmap
 
 ### Dynamic Pricing
@@ -179,7 +208,28 @@ Phase 3 introduces automated fraud screening.
 - Forecasted risk affects the renewal price
 - Auto-renew can be enabled for continuous coverage
 
+## Phase 1 Prototype Scope
+
+- Static premium calculator
+- Mock trigger simulation
+- UI wireframes for mobile
+- No real-time payouts yet, only simulated payout flows
+
 ## Roadmap
+
+## Development Plan (Phase 1 -> Phase 2)
+
+Week 1-2:
+
+- Define schema
+- Setup backend APIs
+- Mock trigger services
+
+Week 3-4:
+
+- Implement policy engine
+- Integrate APIs
+- Build claims system
 
 ### Phase 1: Foundation
 
