@@ -1,7 +1,7 @@
 # QuickShield
 
 - **Team**: 3Three
-- **Github**:
+- **Github**: https://github.com/Ronit675/QuickShield
 - **Video Link**:
 
 ## Overview
