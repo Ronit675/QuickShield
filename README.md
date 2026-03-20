@@ -2,7 +2,7 @@
 
 - **Team**: 3Three
 - **Github**: https://github.com/Ronit675/QuickShield
-- **Video Link**: https://www.loom.com/share/f4192006a48f411eb38c8112217ab1b1
+- **Video Link**: https://www.loom.com/share/25bde692b6c443fba2ac546310d0743a
 
 ## Overview
 
