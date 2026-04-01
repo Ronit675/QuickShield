@@ -110,7 +110,7 @@ type WeatherLoadState =
   | 'gps_unavailable'
   | 'error';
 
-const GOOGLE_WEATHER_API_KEY = 'AIzaSyD1EmLhJzswzvT6OoNJ76tux_ZgY4JaMNU';
+const GOOGLE_WEATHER_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_WEATHER_API_KEY;
 const GOOGLE_CURRENT_CONDITIONS_ENDPOINT = 'https://weather.googleapis.com/v1/currentConditions:lookup';
 const GOOGLE_FORECAST_DAYS_ENDPOINT = 'https://weather.googleapis.com/v1/forecast/days:lookup';
 
@@ -211,6 +211,10 @@ const buildWeatherUrl = (
   longitude: number,
   extraParams?: Record<string, string>,
 ) => {
+  if (!GOOGLE_WEATHER_API_KEY) {
+    throw createWeatherError('Missing EXPO_PUBLIC_GOOGLE_WEATHER_API_KEY.', 'error');
+  }
+
   const params = new URLSearchParams({
     key: GOOGLE_WEATHER_API_KEY,
     'location.latitude': String(latitude),
