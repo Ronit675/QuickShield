@@ -1,0 +1,64 @@
+{
+  "features": [
+    "zone_enc",
+    "platform_enc",
+    "month",
+    "day_of_week",
+    "rainfall_forecast_mm",
+    "historical_disruption_rate",
+    "flood_prone",
+    "civic_flag",
+    "monsoon_intensity"
+  ],
+  "zones": [
+    "bengaluru-btm",
+    "bengaluru-koramangala",
+    "bengaluru-indiranagar",
+    "bengaluru-whitefield",
+    "mumbai-andheri",
+    "mumbai-bandra",
+    "delhi-connaught",
+    "delhi-lajpat",
+    "hyderabad-hitech",
+    "pune-koregaon"
+  ],
+  "platforms": [
+    "zepto",
+    "blinkit",
+    "swiggy",
+    "zomato"
+  ],
+  "zone_risk_map": {
+    "bengaluru-btm": 0.65,
+    "bengaluru-koramangala": 0.45,
+    "bengaluru-indiranagar": 0.25,
+    "bengaluru-whitefield": 0.2,
+    "mumbai-andheri": 0.7,
+    "mumbai-bandra": 0.5,
+    "delhi-connaught": 0.4,
+    "delhi-lajpat": 0.3,
+    "hyderabad-hitech": 0.35,
+    "pune-koregaon": 0.28
+  },
+  "platform_app_risk": {
+    "zepto": 0.15,
+    "blinkit": 0.08,
+    "swiggy": 0.12,
+    "zomato": 0.1
+  },
+  "train_samples": 6000,
+  "metrics": {
+    "F": {
+      "mae": 0.0324,
+      "r2": 0.9326
+    },
+    "Z": {
+      "mae": 0.0248,
+      "r2": 0.9684
+    },
+    "A": {
+      "mae": 0.0167,
+      "r2": 0.8092
+    }
+  }
+}

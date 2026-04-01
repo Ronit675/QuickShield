@@ -42,34 +42,51 @@ export default function PlatformConnectScreen() {
   const [updatingPlatform, setUpdatingPlatform] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(false);
   const [disconnectingPlatform, setDisconnectingPlatform] = useState(false);
+  const [isShiftExpanded, setIsShiftExpanded] = useState(false);
 
   const hasPlatformChanged = selectedPlatform !== user?.platform;
   const selectedPlatformLabel = useMemo(
     () => formatPlatformName(selectedPlatform),
     [selectedPlatform],
   );
-  const isVerified = user?.platformConnectionStatus === 'verified';
   const workingZone = user?.serviceZone
     ? user.serviceZone
         .split('-')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ')
     : 'Not selected';
+  const workingTimeSlots = user?.workingTimeSlots ?? [];
+  const hasWorkingShift = typeof user?.workingHours === 'number' && !!user?.workingShiftLabel;
+  const visibleTimeSlots = isShiftExpanded ? workingTimeSlots : workingTimeSlots.slice(0, 4);
+  const hiddenSlotCount = Math.max(0, workingTimeSlots.length - visibleTimeSlots.length);
 
   const handleConnect = async () => {
+    if (!user) {
+      return;
+    }
+
     setConnectingPlatform(true);
     try {
-      const response = await connectSelectedPlatform();
-      setUser(response.user);
+      const payload = await connectSelectedPlatform();
+      setIsShiftExpanded(false);
 
-      if (response.verified) {
-        Alert.alert(
-          'Platform connected',
-          `Verified successfully. Average daily income: Rs ${response.averageDailyIncome}`,
-        );
-      }
+      setUser({
+        ...payload.user,
+        avgDailyIncome: payload.averageDailyIncome,
+        workingHours: payload.workingHours,
+        workingShiftLabel: payload.workingShiftLabel,
+        workingTimeSlots: payload.workingTimeSlots,
+      });
+
+      Alert.alert(
+        'Mock rider data allocated',
+        `${selectedPlatformLabel} income: Rs ${payload.averageDailyIncome}\nShift: ${payload.workingShiftLabel} (${payload.workingHours} hrs)`,
+      );
     } catch (err: any) {
-      Alert.alert('Could not connect platform', err.response?.data?.message || err.message || 'Please try again.');
+      Alert.alert(
+        'Could not allocate mock rider data',
+        err.response?.data?.message || err.message || 'Please try again.',
+      );
     } finally {
       setConnectingPlatform(false);
     }
@@ -83,7 +100,14 @@ export default function PlatformConnectScreen() {
     setUpdatingPlatform(true);
     try {
       const updatedUser = await updateSelectedPlatform(selectedPlatform);
-      setUser(updatedUser);
+      setIsShiftExpanded(false);
+      setUser({
+        ...updatedUser,
+        avgDailyIncome: null,
+        workingHours: null,
+        workingShiftLabel: null,
+        workingTimeSlots: null,
+      });
       Alert.alert('Platform updated', `${formatPlatformName(selectedPlatform)} is now your selected platform.`);
     } catch (err: any) {
       Alert.alert('Could not update platform', err.response?.data?.message || err.message || 'Please try again.');
@@ -93,13 +117,28 @@ export default function PlatformConnectScreen() {
   };
 
   const handleDisconnect = async () => {
+    if (!user) {
+      return;
+    }
+
     setDisconnectingPlatform(true);
     try {
-      const response = await disconnectSelectedPlatform();
-      setUser(response.user);
-      Alert.alert('Platform disconnected', response.message);
+      const payload = await disconnectSelectedPlatform();
+      setIsShiftExpanded(false);
+
+      setUser({
+        ...payload.user,
+        avgDailyIncome: null,
+        workingHours: null,
+        workingShiftLabel: null,
+        workingTimeSlots: null,
+      });
+      Alert.alert('Mock rider data cleared', 'The test average income and rider shift have been removed.');
     } catch (err: any) {
-      Alert.alert('Could not disconnect platform', err.response?.data?.message || err.message || 'Please try again.');
+      Alert.alert(
+        'Could not clear working hours',
+        err.response?.data?.message || err.message || 'Please try again.',
+      );
     } finally {
       setDisconnectingPlatform(false);
     }
@@ -115,7 +154,7 @@ export default function PlatformConnectScreen() {
 
         <Text style={styles.title}>Connect platform</Text>
         <Text style={styles.subtitle}>
-          We&apos;ll verify the selected q-commerce platform against your rider dataset before daily income is attached to your RiderProfile.
+          This test flow assigns mock average daily income plus rider working hours and hourly time slots for your selected q-commerce platform.
         </Text>
 
         <View style={styles.heroCard}>
@@ -124,7 +163,7 @@ export default function PlatformConnectScreen() {
           <Text style={styles.heroMeta}>Chosen during onboarding</Text>
         </View>
 
-        {!isVerified && (
+        {!hasWorkingShift && (
           <TouchableOpacity
             style={[styles.primaryBtn, connectingPlatform && styles.primaryBtnDisabled]}
             onPress={handleConnect}
@@ -139,10 +178,10 @@ export default function PlatformConnectScreen() {
           </TouchableOpacity>
         )}
 
-        {isVerified && (
+        {hasWorkingShift && (
           <View style={styles.connectedCard}>
-            <Text style={styles.connectedEyebrow}>Platform connected</Text>
-            <Text style={styles.connectedTitle}>Verified rider profile</Text>
+            <Text style={styles.connectedEyebrow}>Mock shift ready</Text>
+            <Text style={styles.connectedTitle}>Rider working hours assigned</Text>
 
             <View style={styles.connectedStats}>
               <View style={styles.connectedStatBlock}>
@@ -156,8 +195,36 @@ export default function PlatformConnectScreen() {
               </View>
             </View>
 
+            {hasWorkingShift && (
+              <View style={styles.shiftCard}>
+                <Text style={styles.shiftCardLabel}>Fetched rider shift</Text>
+                <Text style={styles.shiftCardValue}>{user?.workingShiftLabel}</Text>
+                <Text style={styles.shiftCardMeta}>{user?.workingHours} working hours</Text>
+
+                <View style={styles.timeSlotWrap}>
+                  {visibleTimeSlots.map((slot) => (
+                    <View key={slot} style={styles.timeSlotChip}>
+                      <Text style={styles.timeSlotText}>{slot}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {workingTimeSlots.length > 4 && (
+                  <TouchableOpacity
+                    style={styles.expandShiftBtn}
+                    onPress={() => setIsShiftExpanded((current) => !current)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.expandShiftBtnText}>
+                      {isShiftExpanded ? 'Show fewer slots' : `Show +${hiddenSlotCount} more slots`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             <Text style={styles.connectedMeta}>
-              Stored in RiderProfile after successful verification against your rider dataset.
+              Mock allocation only. Each connect generates a random average daily income and a rider shift between 3 and 14 working hours.
             </Text>
 
             <TouchableOpacity
@@ -178,7 +245,7 @@ export default function PlatformConnectScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>What connect does now</Text>
           <Text style={styles.infoText}>
-            Connecting now directly activates the selected q-commerce platform and stores a generated daily average income in RiderProfile.
+            Connect now skips verification and allocates random mock rider data: average daily income plus a shift made of hourly time slots.
           </Text>
         </View>
 
@@ -347,6 +414,63 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 18,
+  },
+  shiftCard: {
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: '#11261D',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+    marginBottom: 16,
+  },
+  shiftCardLabel: {
+    color: '#8BA798',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  shiftCardValue: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  shiftCardMeta: {
+    color: '#CDE7DA',
+    fontSize: 13,
+    marginBottom: 14,
+  },
+  timeSlotWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeSlotChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: '#193528',
+    borderWidth: 1,
+    borderColor: '#275440',
+  },
+  timeSlotText: {
+    color: '#E5F6EC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  expandShiftBtn: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#102017',
+    borderWidth: 1,
+    borderColor: '#1E3A2F',
+  },
+  expandShiftBtnText: {
+    color: '#9DB8AB',
+    fontSize: 12,
+    fontWeight: '700',
   },
   infoCard: {
     backgroundColor: '#13131A',

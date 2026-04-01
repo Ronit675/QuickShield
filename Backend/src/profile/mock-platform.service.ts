@@ -89,6 +89,7 @@ export class ProfileService {
     }
 
     const averageDailyIncome = this.generateAverageDailyIncome();
+    const riderShift = this.generateWorkingShift();
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -105,6 +106,9 @@ export class ProfileService {
     return {
       verified: true,
       averageDailyIncome,
+      workingHours: riderShift.workingHours,
+      workingShiftLabel: riderShift.workingShiftLabel,
+      workingTimeSlots: riderShift.workingTimeSlots,
       message: 'Platform connected',
       user: buildAuthUser(updatedUser),
     };
@@ -238,5 +242,36 @@ export class ProfileService {
 
   private generateAverageDailyIncome() {
     return Math.floor(Math.random() * (2500 - 300 + 1)) + 300;
+  }
+
+  private generateWorkingShift() {
+    const workingHours = Math.floor(Math.random() * (14 - 3 + 1)) + 3;
+    const earliestStartHour = 6;
+    const latestEndHour = 22;
+    const latestStartHour = Math.max(earliestStartHour, latestEndHour - workingHours);
+    const startHour = Math.floor(
+      Math.random() * (latestStartHour - earliestStartHour + 1),
+    ) + earliestStartHour;
+
+    const workingTimeSlots = Array.from({ length: workingHours }, (_, index) => {
+      const slotStart = startHour + index;
+      const slotEnd = slotStart + 1;
+
+      return `${this.formatHour(slotStart)} - ${this.formatHour(slotEnd)}`;
+    });
+
+    return {
+      workingHours,
+      workingShiftLabel: `${this.formatHour(startHour)} - ${this.formatHour(startHour + workingHours)}`,
+      workingTimeSlots,
+    };
+  }
+
+  private formatHour(hour: number) {
+    const normalizedHour = ((hour % 24) + 24) % 24;
+    const period = normalizedHour >= 12 ? 'PM' : 'AM';
+    const hourIn12Format = normalizedHour % 12 === 0 ? 12 : normalizedHour % 12;
+
+    return `${hourIn12Format}:00 ${period}`;
   }
 }

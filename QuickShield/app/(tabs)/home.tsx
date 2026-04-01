@@ -3,7 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { useAuth } from './src/context/AuthContext';
-import HomeScreen from './src/screens/Homescreen';
+import MainTabsScreen from './src/screens/MainTabsScreen';
 
 export default function HomeRoute() {
   const { user, isLoading } = useAuth();
@@ -35,7 +35,7 @@ export default function HomeRoute() {
   }
 
   if (user?.profileStatus === 'active') {
-    return <HomeScreen />;
+    return <MainTabsScreen />;
   }
 
   return (

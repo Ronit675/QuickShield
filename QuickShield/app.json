@@ -10,7 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.QuickShield"
+      "bundleIdentifier": "com.anonymous.QuickShield",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow QuickShield to access your location so it can show live weather for your current area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow QuickShield to access your location in the background so rider tracking can continue after you leave the app.",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +28,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.QuickShield"
+      "package": "com.anonymous.QuickShield",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -45,6 +59,16 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow QuickShield to access your photos so you can upload a profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow QuickShield to access your location so it can show live weather for your current area.",
+          "locationAlwaysAndWhenInUsePermission": "Allow QuickShield to access your location in the background so rider tracking can continue after you leave the app.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "@react-native-google-signin/google-signin",

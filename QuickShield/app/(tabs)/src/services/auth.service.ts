@@ -3,6 +3,21 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import api from './api';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const WORKING_SHIFT_STORAGE_KEY_PREFIX = 'working-shift:';
+
+type StoredWorkingShift = {
+  avgDailyIncome?: number | null;
+  workingHours?: number | null;
+  workingShiftLabel?: string | null;
+  workingTimeSlots?: string[] | null;
+};
+
+export type MockRiderProfileSnapshot = {
+  avgDailyIncome: number;
+  workingHours: number;
+  workingShiftLabel: string;
+  workingTimeSlots: string[];
+};
 
 const getGoogleSignInModule = () => {
   if (isExpoGo) {
@@ -12,6 +27,88 @@ const getGoogleSignInModule = () => {
   }
 
   return require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+};
+
+const getWorkingShiftStorageKey = (userId: string) => `${WORKING_SHIFT_STORAGE_KEY_PREFIX}${userId}`;
+
+const readStoredWorkingShift = async (userId: string): Promise<StoredWorkingShift> => {
+  const serializedShift = await AsyncStorage.getItem(getWorkingShiftStorageKey(userId));
+  if (!serializedShift) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(serializedShift) as StoredWorkingShift;
+  } catch {
+    await AsyncStorage.removeItem(getWorkingShiftStorageKey(userId));
+    return {};
+  }
+};
+
+const persistWorkingShift = async (userId: string, shift: StoredWorkingShift) => {
+  await AsyncStorage.setItem(getWorkingShiftStorageKey(userId), JSON.stringify(shift));
+};
+
+const clearWorkingShift = async (userId: string) => {
+  await AsyncStorage.removeItem(getWorkingShiftStorageKey(userId));
+};
+
+const mergeWorkingShift = async (user: AuthUser): Promise<AuthUser> => ({
+  ...user,
+  ...(await readStoredWorkingShift(user.id)),
+});
+
+const formatHour = (hour: number) => {
+  const normalizedHour = ((hour % 24) + 24) % 24;
+  const period = normalizedHour >= 12 ? 'PM' : 'AM';
+  const hourIn12Format = normalizedHour % 12 === 0 ? 12 : normalizedHour % 12;
+
+  return `${hourIn12Format}:00 ${period}`;
+};
+
+const generateMockWorkingShift = () => {
+  const workingHours = Math.floor(Math.random() * (14 - 3 + 1)) + 3;
+  const earliestStartHour = 6;
+  const latestEndHour = 22;
+  const latestStartHour = Math.max(earliestStartHour, latestEndHour - workingHours);
+  const startHour = Math.floor(
+    Math.random() * (latestStartHour - earliestStartHour + 1),
+  ) + earliestStartHour;
+
+  const workingTimeSlots = Array.from({ length: workingHours }, (_, index) => {
+    const slotStart = startHour + index;
+    const slotEnd = slotStart + 1;
+
+    return `${formatHour(slotStart)} - ${formatHour(slotEnd)}`;
+  });
+
+  return {
+    workingHours,
+    workingShiftLabel: `${formatHour(startHour)} - ${formatHour(startHour + workingHours)}`,
+    workingTimeSlots,
+  };
+};
+
+const generateMockAverageDailyIncome = () => Math.floor(Math.random() * (2500 - 300 + 1)) + 300;
+
+export const generateMockRiderProfileSnapshot = (): MockRiderProfileSnapshot => {
+  const workingShift = generateMockWorkingShift();
+
+  return {
+    avgDailyIncome: generateMockAverageDailyIncome(),
+    ...workingShift,
+  };
+};
+
+export const saveMockRiderProfileSnapshot = async (
+  userId: string,
+  snapshot: MockRiderProfileSnapshot,
+) => {
+  await persistWorkingShift(userId, snapshot);
+};
+
+export const clearMockRiderProfileSnapshot = async (userId: string) => {
+  await clearWorkingShift(userId);
 };
 
 export const configureGoogleSignIn = () => {
@@ -40,6 +137,9 @@ export interface AuthUser {
   city: string | null;
   serviceZone: string | null;
   avgDailyIncome: number | null;
+  workingHours?: number | null;
+  workingShiftLabel?: string | null;
+  workingTimeSlots?: string[] | null;
   platformConnectionStatus: 'not_connected' | 'verified';
   authProvider: string;
   profileStatus: 'auth_only' | 'platform_linked' | 'active';
@@ -94,7 +194,7 @@ export const restoreSession = async (): Promise<AuthUser | null> => {
 
   try {
     const response = await api.get('/auth/me');
-    return response.data;
+    return mergeWorkingShift(response.data as AuthUser);
   } catch {
     await AsyncStorage.removeItem('accessToken');
     return null;
@@ -131,17 +231,37 @@ export const updateProfileDetails = async (payload: {
 
 export const updateSelectedPlatform = async (platform: string): Promise<AuthUser> => {
   const response = await api.post('/profile/platform', { platform });
-  return response.data.user;
+  const user = response.data.user as AuthUser;
+  await clearWorkingShift(user.id);
+  return user;
 };
 
 export const connectSelectedPlatform = async (): Promise<{
   verified: boolean;
   averageDailyIncome: number;
+  workingHours: number;
+  workingShiftLabel: string;
+  workingTimeSlots: string[];
   message: string;
   user: AuthUser;
 }> => {
   const response = await api.post('/profile/platform/connect');
-  return response.data;
+  const payload = response.data as {
+    verified: boolean;
+    averageDailyIncome: number;
+    workingHours: number;
+    workingShiftLabel: string;
+    workingTimeSlots: string[];
+    message: string;
+    user: AuthUser;
+  };
+
+  await persistWorkingShift(payload.user.id, {
+    workingHours: payload.workingHours,
+    workingShiftLabel: payload.workingShiftLabel,
+    workingTimeSlots: payload.workingTimeSlots,
+  });
+  return payload;
 };
 
 export const disconnectSelectedPlatform = async (): Promise<{
@@ -150,7 +270,14 @@ export const disconnectSelectedPlatform = async (): Promise<{
   user: AuthUser;
 }> => {
   const response = await api.post('/profile/platform/disconnect');
-  return response.data;
+  const payload = response.data as {
+    disconnected: boolean;
+    message: string;
+    user: AuthUser;
+  };
+
+  await clearWorkingShift(payload.user.id);
+  return payload;
 };
 
 const authService = {
