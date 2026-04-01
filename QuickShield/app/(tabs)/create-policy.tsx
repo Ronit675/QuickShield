@@ -110,8 +110,7 @@ type WeatherLoadState =
   | 'gps_unavailable'
   | 'error';
 
-// Rotated API key by 1 shift, moving the leftmost character of key to the rightmost position
-const GOOGLE_WEATHER_API_KEY = 'IzaSyD1EmLhJzswzvT6OoNJ76tux_ZgY4JaMNUA';
+const GOOGLE_WEATHER_API_KEY = 'AIzaSyD1EmLhJzswzvT6OoNJ76tux_ZgY4JaMNU';
 const GOOGLE_CURRENT_CONDITIONS_ENDPOINT = 'https://weather.googleapis.com/v1/currentConditions:lookup';
 const GOOGLE_FORECAST_DAYS_ENDPOINT = 'https://weather.googleapis.com/v1/forecast/days:lookup';
 
