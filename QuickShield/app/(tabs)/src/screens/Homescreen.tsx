@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { signOut } from '../services/auth.service';
+import { getIncompleteProfileFields, isProfileComplete, signOut } from '../services/auth.service';
 import ProfileAvatar from '../components/ProfileAvatar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
 import WeatherCard from '../components/WeatherCard';
@@ -37,8 +37,8 @@ const formatPlatformName = (platform: string | null) => {
 
 const formatCurrency = (value: number) =>
   `₹${value.toLocaleString('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : value < 1 ? 4 : 2,
+    maximumFractionDigits: value < 1 ? 4 : 2,
   })}`;
 
 export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeScreenProps) {
@@ -71,6 +71,15 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
       fetchPolicy();
     }
   }, [fetchPolicy, isActive]);
+
+  const syncPolicy = useCallback(async (nextPolicy?: PolicySummary | null) => {
+    if (nextPolicy !== undefined) {
+      setPolicy(nextPolicy);
+      return;
+    }
+
+    await fetchPolicy();
+  }, [fetchPolicy]);
 
   const claims = policy?.claims ?? [];
 
@@ -120,8 +129,26 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
       return;
     }
 
+    if (!isProfileComplete(user)) {
+      const missingFields = getIncompleteProfileFields(user);
+      Alert.alert(
+        'Complete your profile first',
+        `Finish your ${missingFields.join(', ')} before protecting your income.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to profile',
+            onPress: () => {
+              router.push('/profile');
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     router.push('/create-policy');
-  }, [user?.platformConnectionStatus]);
+  }, [user]);
 
   const handleRemoveActivePolicy = useCallback(async () => {
     setRemovingPolicy(true);
@@ -266,7 +293,7 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
 
         {policy?.status === 'active' ? (
           <>
-            <RainDisruptionCard isActive={isActive} onPolicyRefresh={fetchPolicy} policy={policy} user={user} />
+            <RainDisruptionCard isActive={isActive} onPolicyRefresh={syncPolicy} policy={policy} user={user} />
 
             {/* Active policy card */}
             <View style={styles.policyCard}>

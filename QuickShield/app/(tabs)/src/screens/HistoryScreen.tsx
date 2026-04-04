@@ -30,8 +30,8 @@ const STATUS_BACKGROUNDS: Record<string, string> = {
 
 const formatCurrency = (value: number) =>
   `₹${value.toLocaleString('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : value < 1 ? 4 : 2,
+    maximumFractionDigits: value < 1 ? 4 : 2,
   })}`;
 
 const formatDate = (value: string) =>

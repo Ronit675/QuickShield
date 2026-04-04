@@ -45,6 +45,12 @@ const getWalletBalance = (policies: PolicySummary[]) =>
       .reduce((claimSum, claim) => claimSum + claim.payoutAmount, 0)
   ), 0);
 
+const formatCurrency = (value: number) =>
+  `₹${value.toLocaleString('en-IN', {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : value < 1 ? 4 : 2,
+    maximumFractionDigits: value < 1 ? 4 : 2,
+  })}`;
+
 export default function PlatformConnectScreen() {
   const { user, setUser } = useAuth();
   const [selectedPlatform, setSelectedPlatform] = useState(user?.platform ?? null);
@@ -146,7 +152,7 @@ export default function PlatformConnectScreen() {
       if (walletBalance > 0) {
         Alert.alert(
           'Redeem wallet balance first',
-          `You still have ₹${walletBalance.toLocaleString('en-IN')} in the wallet. Redeem the payment before changing your q-commerce platform.`,
+          `You still have ${formatCurrency(walletBalance)} in the wallet. Redeem the payment before changing your q-commerce platform.`,
           [
             { text: 'Cancel', style: 'cancel' },
             {

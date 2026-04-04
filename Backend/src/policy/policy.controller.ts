@@ -42,8 +42,9 @@ export class PolicyController {
   @Post('mock-rain-claim')
   creditMockRainClaim(
     @Request() req: any,
-    @Body('affectedHourKey') affectedHourKey: string,
+    @Body('claimSessionKey') claimSessionKey: string,
+    @Body('disruptedHours') disruptedHours: number,
   ) {
-    return this.policyService.creditMockRainClaim(req.user.userId, affectedHourKey);
+    return this.policyService.creditMockRainClaim(req.user.userId, claimSessionKey, disruptedHours);
   }
 }

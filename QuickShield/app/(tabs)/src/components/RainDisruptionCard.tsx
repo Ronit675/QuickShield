@@ -9,7 +9,7 @@ import type { PolicySummary } from '../types/policy';
 
 type RainDisruptionCardProps = {
   isActive?: boolean;
-  onPolicyRefresh?: () => Promise<void> | void;
+  onPolicyRefresh?: (nextPolicy?: PolicySummary | null) => Promise<void> | void;
   policy: PolicySummary | null;
   user: AuthUser | null;
 };
@@ -22,7 +22,8 @@ type WorkingWindow = {
 };
 
 type StoredRainDisruptionTimer = {
-  creditedHourKeys?: string[];
+  claimSessionKey?: string;
+  creditedHours?: number;
   startedAtMs: number;
   windowKey: string;
 };
@@ -30,22 +31,20 @@ type StoredRainDisruptionTimer = {
 const RAIN_DISRUPTION_STORAGE_KEY_PREFIX = 'rain-disruption:';
 const WEATHER_REFRESH_INTERVAL_MS = 60_000;
 const TIMER_TICK_INTERVAL_MS = 1_000;
-const CLAIM_UNLOCK_THRESHOLD_MS = 60 * 60 * 1000;
 const RAIN_TRIGGER_THRESHOLD_MM_PER_HR = 8;
+const HOURS_PER_DAY = 24;
+const MS_PER_HOUR = 60 * 60 * 1000;
 
 const getStorageKey = (userId: string | null | undefined) =>
   `${RAIN_DISRUPTION_STORAGE_KEY_PREFIX}${userId ?? 'anonymous'}`;
 
 const formatCurrency = (value: number) =>
   `₹${value.toLocaleString('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : value < 1 ? 4 : 2,
+    maximumFractionDigits: value < 1 ? 4 : 2,
   })}`;
 
-const padNumber = (value: number) => value.toString().padStart(2, '0');
-
-const formatLocalHourKey = (date: Date) =>
-  `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}T${padNumber(date.getHours())}:00`;
+const buildClaimSessionKey = (windowKey: string, startedAtMs: number) => `${windowKey}:${startedAtMs}`;
 
 const parseTimeToken = (value: string, baseDate: Date) => {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -159,6 +158,7 @@ export default function RainDisruptionCard({
   const [weatherSummary, setWeatherSummary] = useState('Waiting for mock rain rate');
   const [rainfallRateMmPerHr, setRainfallRateMmPerHr] = useState<number | null>(null);
   const [trackedStartMs, setTrackedStartMs] = useState<number | null>(null);
+  const [trackedClaimSessionKey, setTrackedClaimSessionKey] = useState<string | null>(null);
   const [trackedWindowKey, setTrackedWindowKey] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [clockMs, setClockMs] = useState(Date.now());
@@ -181,6 +181,7 @@ export default function RainDisruptionCard({
       setIsCreditingClaim(false);
       setIsTracking(false);
       setTrackedStartMs(null);
+      setTrackedClaimSessionKey(null);
       setTrackedWindowKey(null);
       setRainfallRateMmPerHr(null);
       setWeatherSummary('Outside the rider working slot');
@@ -197,6 +198,7 @@ export default function RainDisruptionCard({
       setIsCreditingClaim(false);
       setIsTracking(false);
       setTrackedStartMs(null);
+      setTrackedClaimSessionKey(null);
       setTrackedWindowKey(null);
       return;
     }
@@ -210,19 +212,29 @@ export default function RainDisruptionCard({
     const startedAtMs = storedTimer?.windowKey === activeWorkingWindow.key
       ? storedTimer.startedAtMs
       : fallbackStartMs;
-    const creditedHourKeys = storedTimer?.windowKey === activeWorkingWindow.key
-      ? storedTimer.creditedHourKeys ?? []
-      : [];
+    const claimSessionKey = storedTimer?.windowKey === activeWorkingWindow.key
+      ? storedTimer.claimSessionKey ?? buildClaimSessionKey(activeWorkingWindow.key, startedAtMs)
+      : buildClaimSessionKey(activeWorkingWindow.key, startedAtMs);
+    const creditedHours = storedTimer?.windowKey === activeWorkingWindow.key
+      ? storedTimer.creditedHours ?? 0
+      : 0;
 
-    if (storedTimer?.windowKey !== activeWorkingWindow.key || storedTimer.startedAtMs !== startedAtMs) {
+    if (
+      storedTimer?.windowKey !== activeWorkingWindow.key
+      || storedTimer.startedAtMs !== startedAtMs
+      || storedTimer.claimSessionKey !== claimSessionKey
+      || storedTimer.creditedHours !== creditedHours
+    ) {
       await persistStoredTimer(storageKey, {
-        creditedHourKeys,
+        claimSessionKey,
+        creditedHours,
         startedAtMs,
         windowKey: activeWorkingWindow.key,
       });
     }
 
     setTrackedStartMs(startedAtMs);
+    setTrackedClaimSessionKey(claimSessionKey);
     setTrackedWindowKey(activeWorkingWindow.key);
     setIsTracking(true);
   }, [user]);
@@ -276,38 +288,41 @@ export default function RainDisruptionCard({
   }, [isActive, refreshRainStatus]);
 
   const elapsedMs = isTracking && trackedStartMs ? Math.max(0, clockMs - trackedStartMs) : 0;
-  const completedTrackedHours = isTracking && trackedStartMs
-    ? Math.floor(elapsedMs / CLAIM_UNLOCK_THRESHOLD_MS)
+  const elapsedTrackedHours = isTracking && trackedStartMs
+    ? Math.floor(elapsedMs / MS_PER_HOUR)
     : 0;
-  const hasUnlockedClaim = policy?.status === 'active' && completedTrackedHours > 0;
-  const eligibleClaimAmount = hasUnlockedClaim ? policy?.coveragePerDay ?? 0 : 0;
-  const remainingToUnlockMs = Math.max(0, CLAIM_UNLOCK_THRESHOLD_MS - elapsedMs);
+  const perHourCreditAmount = policy?.status === 'active'
+    ? (policy.coveragePerDay ?? 0) / HOURS_PER_DAY
+    : 0;
+  const currentAccruedClaimAmount = policy?.status === 'active'
+    ? perHourCreditAmount * elapsedTrackedHours
+    : 0;
 
-  const creditCompletedHours = useCallback(async () => {
+  const syncTrackedClaim = useCallback(async () => {
     if (
       isCreditingClaimRef.current
       || !isTracking
       || !trackedStartMs
+      || !trackedClaimSessionKey
       || !trackedWindowKey
       || policy?.status !== 'active'
-      || completedTrackedHours <= 0
+      || elapsedTrackedHours <= 0
     ) {
       return;
     }
 
     const storageKey = getStorageKey(user?.id);
     const storedTimer = await readStoredTimer(storageKey);
-    if (!storedTimer || storedTimer.windowKey !== trackedWindowKey) {
+    if (
+      !storedTimer
+      || storedTimer.windowKey !== trackedWindowKey
+      || storedTimer.claimSessionKey !== trackedClaimSessionKey
+    ) {
       return;
     }
 
-    const creditedHourKeys = storedTimer.creditedHourKeys ?? [];
-    const completedHourKeys = Array.from({ length: completedTrackedHours }, (_, hourIndex) =>
-      formatLocalHourKey(new Date(trackedStartMs + hourIndex * CLAIM_UNLOCK_THRESHOLD_MS)),
-    );
-    const pendingHourKeys = completedHourKeys.filter((hourKey) => !creditedHourKeys.includes(hourKey));
-
-    if (pendingHourKeys.length === 0) {
+    const creditedHours = storedTimer.creditedHours ?? 0;
+    if (elapsedTrackedHours <= creditedHours) {
       return;
     }
 
@@ -316,38 +331,41 @@ export default function RainDisruptionCard({
     setErrorMessage(null);
 
     try {
-      for (const affectedHourKey of pendingHourKeys) {
-        await api.post('/policy/mock-rain-claim', { affectedHourKey });
-      }
+      const response = await api.post('/policy/mock-rain-claim', {
+        claimSessionKey: trackedClaimSessionKey,
+        disruptedHours: elapsedTrackedHours,
+      });
 
       await persistStoredTimer(storageKey, {
-        creditedHourKeys: [...creditedHourKeys, ...pendingHourKeys],
+        claimSessionKey: storedTimer.claimSessionKey,
+        creditedHours: elapsedTrackedHours,
         startedAtMs: storedTimer.startedAtMs,
         windowKey: storedTimer.windowKey,
       });
 
-      await onPolicyRefresh?.();
+      await onPolicyRefresh?.(response.data as PolicySummary);
     } catch (err: any) {
       setErrorMessage(
-        err?.response?.data?.message || err?.message || 'Could not credit the mock rain claim.',
+        err?.response?.data?.message || err?.message || 'Could not sync the mock rain payout.',
       );
     } finally {
       setIsCreditingClaim(false);
       isCreditingClaimRef.current = false;
     }
   }, [
-    completedTrackedHours,
+    elapsedTrackedHours,
     isTracking,
     onPolicyRefresh,
     policy?.status,
     trackedStartMs,
+    trackedClaimSessionKey,
     trackedWindowKey,
     user?.id,
   ]);
 
   useEffect(() => {
-    void creditCompletedHours();
-  }, [creditCompletedHours]);
+    void syncTrackedClaim();
+  }, [syncTrackedClaim]);
 
   let helperText = 'Rain disruption is not affecting the rider right now.';
 
@@ -360,11 +378,9 @@ export default function RainDisruptionCard({
   } else if (isTracking && policy?.status !== 'active') {
     helperText = `Rain rate crossed ${RAIN_TRIGGER_THRESHOLD_MM_PER_HR} mm/hr, but there is no active premium plan selected for a payout.`;
   } else if (isCreditingClaim) {
-    helperText = 'The heavy-rain threshold was met. Crediting the affected hour into the wallet now.';
-  } else if (isTracking && hasUnlockedClaim) {
-    helperText = `Rain rate stayed above ${RAIN_TRIGGER_THRESHOLD_MM_PER_HR} mm/hr for ${completedTrackedHours} affected ${completedTrackedHours === 1 ? 'hour' : 'hours'}. Claim credited at ${formatCurrency(eligibleClaimAmount)} per hour.`;
+    helperText = `Syncing ${formatCurrency(currentAccruedClaimAmount)} for ${elapsedTrackedHours} completed disrupted hour${elapsedTrackedHours === 1 ? '' : 's'} at ${formatCurrency(perHourCreditAmount)} per hour.`;
   } else if (isTracking && policy?.status === 'active') {
-    helperText = `${formatDuration(remainingToUnlockMs)} more above ${RAIN_TRIGGER_THRESHOLD_MM_PER_HR} mm/hr is needed to unlock the next affected-hour claim.`;
+    helperText = `${formatCurrency(currentAccruedClaimAmount)} credited across ${elapsedTrackedHours} completed disrupted hour${elapsedTrackedHours === 1 ? '' : 's'} at ${formatCurrency(perHourCreditAmount)} per hour.`;
   }
 
   const statusLabel = isCreditingClaim
@@ -375,9 +391,7 @@ export default function RainDisruptionCard({
         ? 'Standby'
         : 'Idle';
   const claimLabel = policy?.status === 'active'
-    ? hasUnlockedClaim
-      ? formatCurrency(eligibleClaimAmount)
-      : 'Pending'
+    ? formatCurrency(currentAccruedClaimAmount)
     : 'No plan';
 
   if (loading) {
@@ -418,7 +432,7 @@ export default function RainDisruptionCard({
 
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>Claim</Text>
-          <Text style={[styles.metricValue, hasUnlockedClaim && styles.claimValueActive]}>{claimLabel}</Text>
+          <Text style={[styles.metricValue, currentAccruedClaimAmount > 0 && styles.claimValueActive]}>{claimLabel}</Text>
         </View>
 
         <View style={styles.metricCard}>

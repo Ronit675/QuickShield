@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 
 import api from './src/services/api';
 import { useAuth } from './src/context/AuthContext';
+import { getIncompleteProfileFields, isProfileComplete } from './src/services/auth.service';
 import { loadMockWeatherForecast } from './src/services/weather';
 
 type PremiumRecommendation = {
@@ -186,6 +187,7 @@ function WeatherStateCard({
 
 export default function CreatePolicyRoute() {
   const { user } = useAuth();
+  const hasPromptedForProfileRef = useRef(false);
   const [recommendation, setRecommendation] = useState<PremiumRecommendation | null>(null);
   const [coveragePerDay, setCoveragePerDay] = useState(0);
   const [premium, setPremium] = useState<PremiumCalculation | null>(null);
@@ -199,7 +201,7 @@ export default function CreatePolicyRoute() {
   const [buying, setBuying] = useState(false);
 
   const fetchRecommendation = useCallback(async () => {
-    if (user?.platformConnectionStatus !== 'verified') {
+    if (user?.platformConnectionStatus !== 'verified' || !isProfileComplete(user)) {
       setLoading(false);
       setRecommendation(null);
       return;
@@ -245,11 +247,34 @@ export default function CreatePolicyRoute() {
     } finally {
       setLoading(false);
     }
-  }, [user?.avgDailyIncome, user?.platformConnectionStatus]);
+  }, [user]);
 
   useEffect(() => {
     fetchRecommendation();
   }, [fetchRecommendation]);
+
+  useEffect(() => {
+    if (isProfileComplete(user) || hasPromptedForProfileRef.current) {
+      return;
+    }
+
+    hasPromptedForProfileRef.current = true;
+    const missingFields = getIncompleteProfileFields(user);
+
+    Alert.alert(
+      'Complete your profile first',
+      `Finish your ${missingFields.join(', ')} before protecting your income.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go to profile',
+          onPress: () => {
+            router.replace('/profile');
+          },
+        },
+      ],
+    );
+  }, [user]);
 
   if (user?.platformConnectionStatus !== 'verified') {
     return (
@@ -260,6 +285,22 @@ export default function CreatePolicyRoute() {
         </Text>
         <TouchableOpacity onPress={() => router.replace('/platform-connect')} style={styles.primaryBtn}>
           <Text style={styles.primaryBtnText}>Go to platform connection</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!isProfileComplete(user)) {
+    const missingFields = getIncompleteProfileFields(user);
+
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.emptyTitle}>Complete your profile first</Text>
+        <Text style={styles.emptySubtitle}>
+          Add your {missingFields.join(', ')} before protecting your income.
+        </Text>
+        <TouchableOpacity onPress={() => router.replace('/profile')} style={styles.primaryBtn}>
+          <Text style={styles.primaryBtnText}>Go to profile</Text>
         </TouchableOpacity>
       </View>
     );

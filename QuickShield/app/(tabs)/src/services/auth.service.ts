@@ -145,6 +145,33 @@ export interface AuthUser {
   profileStatus: 'auth_only' | 'platform_linked' | 'active';
 }
 
+const hasTextValue = (value: string | null | undefined) => Boolean(value?.trim());
+
+export const getIncompleteProfileFields = (user: AuthUser | null | undefined) => {
+  const missingFields: string[] = [];
+
+  if (!hasTextValue(user?.fullName)) {
+    missingFields.push('full name');
+  }
+
+  if (!hasTextValue(user?.dateOfBirth)) {
+    missingFields.push('date of birth');
+  }
+
+  if (!hasTextValue(user?.address)) {
+    missingFields.push('address');
+  }
+
+  if (!hasTextValue(user?.email) && !hasTextValue(user?.phone)) {
+    missingFields.push('contact details');
+  }
+
+  return missingFields;
+};
+
+export const isProfileComplete = (user: AuthUser | null | undefined) =>
+  getIncompleteProfileFields(user).length === 0;
+
 export const signInWithGoogle = async (): Promise<AuthUser> => {
   const { GoogleSignin, isSuccessResponse } = getGoogleSignInModule();
 
