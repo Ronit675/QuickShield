@@ -266,7 +266,7 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
 
         {policy?.status === 'active' ? (
           <>
-            <RainDisruptionCard isActive={isActive} policy={policy} user={user} />
+            <RainDisruptionCard isActive={isActive} onPolicyRefresh={fetchPolicy} policy={policy} user={user} />
 
             {/* Active policy card */}
             <View style={styles.policyCard}>

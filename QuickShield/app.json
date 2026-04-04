@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.QuickShield",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Allow QuickShield to access your location so it can show live weather for your current area.",
+        "NSLocationWhenInUseUsageDescription": "Allow QuickShield to access your location so it can track rider activity and disruption eligibility.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow QuickShield to access your location in the background so rider tracking can continue after you leave the app.",
         "UIBackgroundModes": [
           "location"
@@ -64,7 +64,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow QuickShield to access your location so it can show live weather for your current area.",
+          "locationWhenInUsePermission": "Allow QuickShield to access your location so it can track rider activity and disruption eligibility.",
           "locationAlwaysAndWhenInUsePermission": "Allow QuickShield to access your location in the background so rider tracking can continue after you leave the app.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
