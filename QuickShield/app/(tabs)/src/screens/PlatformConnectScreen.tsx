@@ -25,7 +25,7 @@ const PLATFORMS = [
   { id: 'zepto', label: 'Zepto', tint: '#A855F7' },
   { id: 'blinkit', label: 'Blinkit', tint: '#F59E0B' },
   { id: 'swiggy', label: 'Swiggy', tint: '#FF6B35' },
-  { id: 'zomato', label: 'Zomato', tint: '#EF4444' },
+  { id: 'jio_mart', label: 'Jio Mart', tint: '#EF4444' },
 ];
 
 const formatPlatformName = (platform: string | null) => {

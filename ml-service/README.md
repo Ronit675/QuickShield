@@ -193,7 +193,7 @@ You can test all endpoints directly from the browser without curl.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `zone_id` | string | Yes | Rider's service zone. See supported zones below. |
-| `platform` | string | Yes | `zepto` · `blinkit` · `swiggy` · `zomato` |
+| `platform` | string | Yes | `zepto` · `blinkit` · `swiggy` · `jio_mart` |
 | `rainfall_forecast_mm` | float | No (default 0) | Hourly rainfall in mm from OpenWeatherMap |
 | `historical_disruption_rate` | float | No (default 0.3) | Zone's past 8-week disruption rate (0–1). Stored in `RiderProfile.zoneRiskScore`. |
 | `civic_flag` | int | No (default 0) | `1` if a curfew or strike is active today |

@@ -11,7 +11,7 @@ const PLATFORMS = [
   { id: 'zepto',   label: 'Zepto',   color: '#A855F7', desc: 'Quick commerce' },
   { id: 'blinkit', label: 'Blinkit', color: '#F59E0B', desc: 'Quick commerce' },
   { id: 'swiggy',  label: 'Swiggy',  color: '#FF6B35', desc: 'Food delivery'  },
-  { id: 'zomato',  label: 'Zomato',  color: '#EF4444', desc: 'Food delivery'  },
+  { id: 'jio_mart',  label: 'Jio Mart',  color: '#EF4444', desc: 'Quick commerce'  },
 ];
 
 export default function OnboardingPlatformScreen() {

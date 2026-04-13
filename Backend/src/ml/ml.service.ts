@@ -37,7 +37,7 @@ const PLATFORM_APP_RISK: Record<string, number> = {
   zepto:  0.15,
   blinkit: 0.08,
   swiggy:  0.12,
-  zomato:  0.10,
+  jio_mart:  0.10,
 };
 
 @Injectable()

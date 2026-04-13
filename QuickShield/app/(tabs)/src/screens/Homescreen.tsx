@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, View, Text, TouchableOpacity, StyleSheet, Pressable,
+  Alert, View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { getIncompleteProfileFields, isProfileComplete, signOut } from '../services/auth.service';
 import { getRainDisruptionTrackingState } from '../services/rain-disruption.service';
 import ProfileAvatar from '../components/ProfileAvatar';
+import QuickShieldSidebar from '../components/QuickShieldSidebar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
 import WeatherCard from '../components/WeatherCard';
 import type { PolicySummary } from '../types/policy';
@@ -208,35 +209,25 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
 
-      {profileMenuVisible && (
-        <>
-          <Pressable style={styles.menuBackdrop} onPress={() => setProfileMenuVisible(false)} />
-          <View style={styles.profileMenu}>
-            <TouchableOpacity
-              style={styles.profileMenuItem}
-              onPress={() => {
-                setProfileMenuVisible(false);
-                router.push('/profile');
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.profileMenuLabel}>My profile</Text>
-              <Text style={styles.profileMenuHint}>View and edit your details</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileMenuItem}
-              onPress={() => {
-                setProfileMenuVisible(false);
-                router.push('/platform-connect');
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.profileMenuLabel}>Connect {platformLabel}</Text>
-              <Text style={styles.profileMenuHint}>Go to your selected q-commerce platform</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
+      <QuickShieldSidebar
+        visible={profileMenuVisible}
+        displayName={displayName}
+        contactLine={contactLine}
+        platformLabel={platformLabel}
+        onClose={() => setProfileMenuVisible(false)}
+        onProfilePress={() => {
+          setProfileMenuVisible(false);
+          router.push('/profile');
+        }}
+        onPlatformPress={() => {
+          setProfileMenuVisible(false);
+          router.push('/platform-connect');
+        }}
+        onSignOutPress={() => {
+          setProfileMenuVisible(false);
+          void handleSignOut();
+        }}
+      />
 
       {/* Top bar */}
       <View style={styles.topBar}>
@@ -249,14 +240,10 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
             <ProfileAvatar uri={user?.profilePhoto} size={48} borderRadius={16} />
           </TouchableOpacity>
           <View style={styles.profileTextWrap}>
-            <Text style={styles.greeting}>Good morning 👋</Text>
+            <Text style={styles.greeting}>Greetings Captain 🧑‍✈️</Text>
             <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.email}>{contactLine}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleSignOut} style={styles.signOutBtn}>
-          <Text style={styles.signOutText}>Sign out</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -395,45 +382,6 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0F', paddingHorizontal: 20 },
   center: { flex: 1, backgroundColor: '#0A0A0F', justifyContent: 'center', alignItems: 'center' },
-  menuBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-  },
-  profileMenu: {
-    position: 'absolute',
-    top: 116,
-    left: 20,
-    width: 250,
-    backgroundColor: '#11141B',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#1C2432',
-    padding: 8,
-    zIndex: 20,
-    shadowColor: '#000000',
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
-  },
-  profileMenuItem: {
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: '#131923',
-    marginBottom: 8,
-  },
-  profileMenuLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  profileMenuHint: {
-    color: '#7A8597',
-    fontSize: 12,
-    lineHeight: 18,
-  },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingTop: 60, paddingBottom: 24,
@@ -453,9 +401,6 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
-  email: { fontSize: 12, color: '#6B7280' },
-  signOutBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#1E1E2E' },
-  signOutText: { fontSize: 12, color: '#6B7280' },
 
   walletCard: {
     backgroundColor: '#102235',

@@ -165,7 +165,6 @@ export class PolicyService {
       await this.prisma.claim.create({
         data: {
           policyId: activePolicy.id,
-          userId,
           triggerType: 'rain',
           affectedSlots: sessionSignature,
           disruptedHours: nextDisruptedHours,

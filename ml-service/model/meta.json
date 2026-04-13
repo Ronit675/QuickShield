@@ -26,7 +26,7 @@
     "zepto",
     "blinkit",
     "swiggy",
-    "zomato"
+    "jio_mart"
   ],
   "zone_risk_map": {
     "bengaluru-btm": 0.65,
@@ -44,13 +44,13 @@
     "zepto": 0.15,
     "blinkit": 0.08,
     "swiggy": 0.12,
-    "zomato": 0.1
+    "jio_mart": 0.1
   },
   "train_samples": 6000,
   "metrics": {
     "F": {
-      "mae": 0.0324,
-      "r2": 0.9326
+      "mae": 0.0323,
+      "r2": 0.9331
     },
     "Z": {
       "mae": 0.0248,

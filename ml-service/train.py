@@ -36,8 +36,8 @@ ZONES = {
     'pune-koregaon':         {'base_z': 0.28, 'flood_prone': False, 'city': 'pune'},
 }
 
-PLATFORMS = ['zepto', 'blinkit', 'swiggy', 'zomato']
-PLATFORM_APP_RISK = {'zepto': 0.15, 'blinkit': 0.08, 'swiggy': 0.12, 'zomato': 0.10}
+PLATFORMS = ['zepto', 'blinkit', 'swiggy', 'jio_mart']
+PLATFORM_APP_RISK = {'zepto': 0.15, 'blinkit': 0.08, 'swiggy': 0.12, 'jio_mart': 0.10}
 
 def generate_data(n: int) -> pd.DataFrame:
     rows = []
