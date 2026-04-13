@@ -36,6 +36,9 @@ model RiderProfile {
   city                     String?
   serviceZone              String   // e.g. "Bengaluru-Koramangala"
   avgDailyIncome           Float
+  workingHours             Int?
+  workingShiftLabel        String?
+  workingTimeSlots         String[] @default([])
   weeklyWorkDays           Int      @default(6)
   zoneRiskScore            Float    @default(0.3)  // seeded from zone history
   platformConnectionStatus String   @default("not_connected") // "not_connected" | "verified" | "not_found"

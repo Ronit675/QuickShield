@@ -73,6 +73,12 @@ export default function PlatformConnectScreen() {
   const hasWorkingShift = typeof user?.workingHours === 'number' && !!user?.workingShiftLabel;
   const visibleTimeSlots = isShiftExpanded ? workingTimeSlots : workingTimeSlots.slice(0, 4);
   const hiddenSlotCount = Math.max(0, workingTimeSlots.length - visibleTimeSlots.length);
+  const isConnectDisabledForPlatformChange = !hasWorkingShift && hasPlatformChanged;
+
+  const fetchActivePolicy = async () => {
+    const activePolicyResponse = await api.get('/policy/active');
+    return activePolicyResponse.data as PolicySummary | null;
+  };
 
   const handleConnect = async () => {
     if (!user) {
@@ -133,25 +139,31 @@ export default function PlatformConnectScreen() {
     }
   };
 
+  const confirmPlatformChange = (message: string) => {
+    Alert.alert(
+      'Change platform',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change platform',
+          style: 'destructive',
+          onPress: () => {
+            void performPlatformChange();
+          },
+        },
+      ],
+    );
+  };
+
   const handlePlatformChange = async () => {
     if (!selectedPlatform || !hasPlatformChanged) {
       return;
     }
 
     try {
+      const activePolicy = await fetchActivePolicy();
       const trackingState = await getRainDisruptionTrackingState(user);
-
-      if (trackingState.isTracking) {
-        Alert.alert(
-          'Platform cannot be changed',
-          'You cannot change the platform while an active disruption window is being tracked. Wait for the timer card to stop before switching platforms.',
-        );
-        return;
-      }
-
-      const activePolicyResponse = await api.get('/policy/active');
-
-      const activePolicy = activePolicyResponse.data as PolicySummary | null;
       const walletBalance = getWalletBalance(activePolicy?.claims ?? []);
 
       if (walletBalance > 0) {
@@ -171,20 +183,24 @@ export default function PlatformConnectScreen() {
         return;
       }
 
-      if (activePolicy?.status === 'active') {
+      if (trackingState.isTracking && activePolicy?.status === 'active') {
         Alert.alert(
-          'Active premium plan found',
-          'Changing the platform will clear the current rider details and you may lose the active premium plan. Do you want to continue?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Change platform',
-              style: 'destructive',
-              onPress: () => {
-                void performPlatformChange();
-              },
-            },
-          ],
+          'Platform cannot be changed',
+          'You cannot change the platform while a disruption window is being tracked for an active premium plan. Wait for the timer card to stop before switching platforms.',
+        );
+        return;
+      }
+
+      if (activePolicy?.status === 'active') {
+        confirmPlatformChange(
+          'Changing the platform will erase your current rider details and may remove the active premium plan. Do you want to continue?',
+        );
+        return;
+      }
+
+      if (hasWorkingShift) {
+        confirmPlatformChange(
+          'Changing the platform will erase your current rider details for this platform. Do you want to continue?',
         );
         return;
       }
@@ -203,17 +219,19 @@ export default function PlatformConnectScreen() {
       return;
     }
 
-    const trackingState = await getRainDisruptionTrackingState(user);
-    if (trackingState.isTracking) {
-      Alert.alert(
-        'Platform cannot be disconnected',
-        'You cannot disconnect the platform while an active disruption window is being tracked. Wait for the timer card to stop before disconnecting.',
-      );
-      return;
-    }
-
-    setDisconnectingPlatform(true);
     try {
+      const activePolicy = await fetchActivePolicy();
+      const trackingState = await getRainDisruptionTrackingState(user);
+
+      if (trackingState.isTracking && activePolicy?.status === 'active') {
+        Alert.alert(
+          'Platform cannot be disconnected',
+          'You cannot disconnect the platform while a disruption window is being tracked for an active premium plan. Wait for the timer card to stop before disconnecting.',
+        );
+        return;
+      }
+
+      setDisconnectingPlatform(true);
       const payload = await disconnectSelectedPlatform();
       setIsShiftExpanded(false);
 
@@ -256,10 +274,13 @@ export default function PlatformConnectScreen() {
 
         {!hasWorkingShift && (
           <TouchableOpacity
-            style={[styles.primaryBtn, connectingPlatform && styles.primaryBtnDisabled]}
+            style={[
+              styles.primaryBtn,
+              (connectingPlatform || isConnectDisabledForPlatformChange) && styles.primaryBtnDisabled,
+            ]}
             onPress={handleConnect}
             activeOpacity={0.85}
-            disabled={connectingPlatform || disconnectingPlatform}
+            disabled={connectingPlatform || disconnectingPlatform || isConnectDisabledForPlatformChange}
           >
             {connectingPlatform ? (
               <ActivityIndicator color="#08110F" />

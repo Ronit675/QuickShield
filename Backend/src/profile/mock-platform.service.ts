@@ -46,6 +46,9 @@ export class ProfileService {
         city: null,
         serviceZone: 'unknown-zone',
         avgDailyIncome: 0,
+        workingHours: null,
+        workingShiftLabel: null,
+        workingTimeSlots: [],
         zoneRiskScore: 0.35,
         platformConnectionStatus: 'not_connected',
       },
@@ -55,6 +58,9 @@ export class ProfileService {
           city: null,
           serviceZone: 'unknown-zone',
           avgDailyIncome: 0,
+          workingHours: null,
+          workingShiftLabel: null,
+          workingTimeSlots: [],
           zoneRiskScore: 0.35,
           platformConnectionStatus: 'not_connected',
         }
@@ -90,6 +96,9 @@ export class ProfileService {
         city,
         serviceZone,
         avgDailyIncome: 0,
+        workingHours: null,
+        workingShiftLabel: null,
+        workingTimeSlots: [],
         zoneRiskScore,
         platformConnectionStatus: 'not_connected',
       },
@@ -126,6 +135,9 @@ export class ProfileService {
         profile: {
           update: {
             avgDailyIncome: averageDailyIncome,
+            workingHours: riderShift.workingHours,
+            workingShiftLabel: riderShift.workingShiftLabel,
+            workingTimeSlots: riderShift.workingTimeSlots,
             platformConnectionStatus: 'verified',
           },
         },
@@ -160,6 +172,9 @@ export class ProfileService {
         profile: {
           update: {
             avgDailyIncome: 0,
+            workingHours: null,
+            workingShiftLabel: null,
+            workingTimeSlots: [],
             platformConnectionStatus: 'not_connected',
           },
         },

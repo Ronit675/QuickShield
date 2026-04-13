@@ -12,6 +12,9 @@ type UserWithProfile = {
     platform?: string;
     city?: string | null;
     avgDailyIncome?: number;
+    workingHours?: number | null;
+    workingShiftLabel?: string | null;
+    workingTimeSlots?: string[];
     platformConnectionStatus?: string;
   } | null;
 };
@@ -28,6 +31,9 @@ export type AuthUserResponse = {
   city: string | null;
   serviceZone: string | null;
   avgDailyIncome: number | null;
+  workingHours: number | null;
+  workingShiftLabel: string | null;
+  workingTimeSlots: string[] | null;
   platformConnectionStatus: 'not_connected' | 'verified';
   authProvider: string;
   profileStatus: 'auth_only' | 'platform_linked' | 'active';
@@ -39,6 +45,7 @@ export const buildAuthUser = (user: UserWithProfile): AuthUserResponse => {
     : user.profile.serviceZone === 'unknown-zone'
       ? 'platform_linked'
       : 'active';
+  const isPlatformVerified = user.profile?.platformConnectionStatus === 'verified';
 
   return {
     id: user.id,
@@ -51,12 +58,14 @@ export const buildAuthUser = (user: UserWithProfile): AuthUserResponse => {
     platform: user.profile?.platform ?? null,
     city: user.profile?.city ?? null,
     serviceZone: user.profile?.serviceZone ?? null,
-    avgDailyIncome:
-      user.profile?.platformConnectionStatus === 'verified'
-        ? user.profile.avgDailyIncome ?? null
+    avgDailyIncome: isPlatformVerified ? user.profile?.avgDailyIncome ?? null : null,
+    workingHours: isPlatformVerified ? user.profile?.workingHours ?? null : null,
+    workingShiftLabel: isPlatformVerified ? user.profile?.workingShiftLabel ?? null : null,
+    workingTimeSlots:
+      isPlatformVerified && user.profile?.workingTimeSlots?.length
+        ? user.profile.workingTimeSlots
         : null,
-    platformConnectionStatus:
-      user.profile?.platformConnectionStatus === 'verified' ? 'verified' : 'not_connected',
+    platformConnectionStatus: isPlatformVerified ? 'verified' : 'not_connected',
     authProvider: user.authProvider ?? 'phone',
     profileStatus,
   };

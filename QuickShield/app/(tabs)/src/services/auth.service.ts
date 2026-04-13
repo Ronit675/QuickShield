@@ -3,9 +3,10 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import api from './api';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-const WORKING_SHIFT_STORAGE_KEY_PREFIX = 'working-shift:';
+const RIDER_DETAILS_STORAGE_KEY_PREFIX = 'rider-details:';
+const LEGACY_WORKING_SHIFT_STORAGE_KEY_PREFIX = 'working-shift:';
 
-type StoredWorkingShift = {
+type StoredRiderDetails = {
   avgDailyIncome?: number | null;
   workingHours?: number | null;
   workingShiftLabel?: string | null;
@@ -29,34 +30,72 @@ const getGoogleSignInModule = () => {
   return require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
 };
 
-const getWorkingShiftStorageKey = (userId: string) => `${WORKING_SHIFT_STORAGE_KEY_PREFIX}${userId}`;
+const getRiderDetailsStorageKey = (userId: string) => `${RIDER_DETAILS_STORAGE_KEY_PREFIX}${userId}`;
+const getLegacyWorkingShiftStorageKey = (userId: string) =>
+  `${LEGACY_WORKING_SHIFT_STORAGE_KEY_PREFIX}${userId}`;
 
-const readStoredWorkingShift = async (userId: string): Promise<StoredWorkingShift> => {
-  const serializedShift = await AsyncStorage.getItem(getWorkingShiftStorageKey(userId));
-  if (!serializedShift) {
+const readStoredRiderDetails = async (userId: string): Promise<StoredRiderDetails> => {
+  const serializedRiderDetails = await AsyncStorage.getItem(getRiderDetailsStorageKey(userId));
+  const serializedLegacyShift = serializedRiderDetails
+    ? null
+    : await AsyncStorage.getItem(getLegacyWorkingShiftStorageKey(userId));
+  const serializedPayload = serializedRiderDetails ?? serializedLegacyShift;
+
+  if (!serializedPayload) {
     return {};
   }
 
   try {
-    return JSON.parse(serializedShift) as StoredWorkingShift;
+    return JSON.parse(serializedPayload) as StoredRiderDetails;
   } catch {
-    await AsyncStorage.removeItem(getWorkingShiftStorageKey(userId));
+    await AsyncStorage.removeItem(getRiderDetailsStorageKey(userId));
+    await AsyncStorage.removeItem(getLegacyWorkingShiftStorageKey(userId));
     return {};
   }
 };
 
-const persistWorkingShift = async (userId: string, shift: StoredWorkingShift) => {
-  await AsyncStorage.setItem(getWorkingShiftStorageKey(userId), JSON.stringify(shift));
+const persistRiderDetails = async (userId: string, riderDetails: StoredRiderDetails) => {
+  await AsyncStorage.setItem(getRiderDetailsStorageKey(userId), JSON.stringify(riderDetails));
 };
 
-const clearWorkingShift = async (userId: string) => {
-  await AsyncStorage.removeItem(getWorkingShiftStorageKey(userId));
+const clearRiderDetails = async (userId: string) => {
+  await AsyncStorage.removeItem(getRiderDetailsStorageKey(userId));
+  await AsyncStorage.removeItem(getLegacyWorkingShiftStorageKey(userId));
 };
 
-const mergeWorkingShift = async (user: AuthUser): Promise<AuthUser> => ({
-  ...user,
-  ...(await readStoredWorkingShift(user.id)),
-});
+const hydrateUserWithStoredRiderDetails = async (user: AuthUser): Promise<AuthUser> => {
+  if (user.platformConnectionStatus !== 'verified') {
+    await clearRiderDetails(user.id);
+    return {
+      ...user,
+      avgDailyIncome: null,
+      workingHours: null,
+      workingShiftLabel: null,
+      workingTimeSlots: null,
+    };
+  }
+
+  const storedRiderDetails = await readStoredRiderDetails(user.id);
+  const hydratedUser = {
+    ...user,
+    avgDailyIncome: user.avgDailyIncome ?? storedRiderDetails.avgDailyIncome ?? null,
+    workingHours: user.workingHours ?? storedRiderDetails.workingHours ?? null,
+    workingShiftLabel: user.workingShiftLabel ?? storedRiderDetails.workingShiftLabel ?? null,
+    workingTimeSlots:
+      user.workingTimeSlots?.length
+        ? user.workingTimeSlots
+        : storedRiderDetails.workingTimeSlots ?? null,
+  };
+
+  await persistRiderDetails(user.id, {
+    avgDailyIncome: hydratedUser.avgDailyIncome,
+    workingHours: hydratedUser.workingHours,
+    workingShiftLabel: hydratedUser.workingShiftLabel,
+    workingTimeSlots: hydratedUser.workingTimeSlots,
+  });
+
+  return hydratedUser;
+};
 
 const formatHour = (hour: number) => {
   const normalizedHour = ((hour % 24) + 24) % 24;
@@ -104,11 +143,11 @@ export const saveMockRiderProfileSnapshot = async (
   userId: string,
   snapshot: MockRiderProfileSnapshot,
 ) => {
-  await persistWorkingShift(userId, snapshot);
+  await persistRiderDetails(userId, snapshot);
 };
 
 export const clearMockRiderProfileSnapshot = async (userId: string) => {
-  await clearWorkingShift(userId);
+  await clearRiderDetails(userId);
 };
 
 export const configureGoogleSignIn = () => {
@@ -193,7 +232,7 @@ export const signInWithGoogle = async (): Promise<AuthUser> => {
   const { accessToken, user } = apiResponse.data;
 
   await AsyncStorage.setItem('accessToken', accessToken);
-  return user;
+  return hydrateUserWithStoredRiderDetails(user as AuthUser);
 };
 
 export const requestPhoneOtp = async (phone: string) => {
@@ -212,7 +251,7 @@ export const signInWithPhoneOtp = async (phone: string, otp: string): Promise<Au
   const { accessToken, user } = response.data;
 
   await AsyncStorage.setItem('accessToken', accessToken);
-  return user;
+  return hydrateUserWithStoredRiderDetails(user as AuthUser);
 };
 
 export const restoreSession = async (): Promise<AuthUser | null> => {
@@ -221,7 +260,7 @@ export const restoreSession = async (): Promise<AuthUser | null> => {
 
   try {
     const response = await api.get('/auth/me');
-    return mergeWorkingShift(response.data as AuthUser);
+    return hydrateUserWithStoredRiderDetails(response.data as AuthUser);
   } catch {
     await AsyncStorage.removeItem('accessToken');
     return null;
@@ -253,14 +292,12 @@ export const updateProfileDetails = async (payload: {
   profilePhoto?: string | null;
 }): Promise<AuthUser> => {
   const response = await api.put('/profile/details', payload);
-  return response.data.user;
+  return hydrateUserWithStoredRiderDetails(response.data.user as AuthUser);
 };
 
 export const updateSelectedPlatform = async (platform: string): Promise<AuthUser> => {
   const response = await api.post('/profile/platform', { platform });
-  const user = response.data.user as AuthUser;
-  await clearWorkingShift(user.id);
-  return user;
+  return hydrateUserWithStoredRiderDetails(response.data.user as AuthUser);
 };
 
 export const connectSelectedPlatform = async (): Promise<{
@@ -283,12 +320,10 @@ export const connectSelectedPlatform = async (): Promise<{
     user: AuthUser;
   };
 
-  await persistWorkingShift(payload.user.id, {
-    workingHours: payload.workingHours,
-    workingShiftLabel: payload.workingShiftLabel,
-    workingTimeSlots: payload.workingTimeSlots,
-  });
-  return payload;
+  return {
+    ...payload,
+    user: await hydrateUserWithStoredRiderDetails(payload.user),
+  };
 };
 
 export const disconnectSelectedPlatform = async (): Promise<{
@@ -303,8 +338,10 @@ export const disconnectSelectedPlatform = async (): Promise<{
     user: AuthUser;
   };
 
-  await clearWorkingShift(payload.user.id);
-  return payload;
+  return {
+    ...payload,
+    user: await hydrateUserWithStoredRiderDetails(payload.user),
+  };
 };
 
 const authService = {
