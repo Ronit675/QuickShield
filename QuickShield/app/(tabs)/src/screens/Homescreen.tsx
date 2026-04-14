@@ -18,6 +18,8 @@ import type { PolicySummary } from '../types/policy';
 type HomeScreenProps = {
   isActive?: boolean;
   bottomInset?: number;
+  variant?: 'home' | 'premium';
+  onOpenPremium?: () => void;
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -43,13 +45,40 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: value < 1 ? 4 : 2,
   })}`;
 
-export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeScreenProps) {
+const formatDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+};
+
+export default function HomeScreen({
+  isActive = false,
+  bottomInset = 40,
+  variant = 'home',
+  onOpenPremium,
+}: HomeScreenProps) {
   const { user, setUser } = useAuth();
   const [policy, setPolicy] = useState<PolicySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profileMenuVisible, setProfileMenuVisible] = useState(false);
   const [removingPolicy, setRemovingPolicy] = useState(false);
+  const [miniTrackingLoading, setMiniTrackingLoading] = useState(true);
+  const [miniIsTracking, setMiniIsTracking] = useState(false);
+  const [miniTrackedStartMs, setMiniTrackedStartMs] = useState<number | null>(null);
+  const [miniWeatherSummary, setMiniWeatherSummary] = useState('Waiting for disruption status');
+  const [miniClockMs, setMiniClockMs] = useState(Date.now());
 
   const fetchPolicy = useCallback(async () => {
     try {
@@ -97,6 +126,80 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
   const contactLine = user?.email || user?.phone || 'Add your details';
   const platformLabel = formatPlatformName(user?.platform ?? null);
   const hasRedeemableBalance = totalPaidOut > 0;
+  const isPremiumTab = variant === 'premium';
+  const needsPlatformConnectForMiniTimer =
+    user?.platformConnectionStatus !== 'verified'
+    || user?.avgDailyIncome === null
+    || !user?.workingTimeSlots?.length;
+
+  const refreshMiniDisruptionState = useCallback(async () => {
+    if (needsPlatformConnectForMiniTimer) {
+      setMiniTrackingLoading(false);
+      setMiniIsTracking(false);
+      setMiniTrackedStartMs(null);
+      setMiniWeatherSummary('Connect your q-commerce platform to fetch rider income and working slots.');
+      return;
+    }
+
+    const trackingState = await getRainDisruptionTrackingState(user);
+    setMiniWeatherSummary(trackingState.weatherSummary);
+    setMiniIsTracking(trackingState.isTracking);
+    setMiniTrackedStartMs(trackingState.trackedStartMs);
+  }, [needsPlatformConnectForMiniTimer, user]);
+
+  useEffect(() => {
+    if (!isActive || isPremiumTab) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const load = async () => {
+      try {
+        if (isMounted) {
+          setMiniTrackingLoading(true);
+        }
+
+        await refreshMiniDisruptionState();
+      } catch {
+        if (isMounted) {
+          setMiniIsTracking(false);
+          setMiniTrackedStartMs(null);
+          setMiniWeatherSummary('Could not refresh disruption status');
+        }
+      } finally {
+        if (isMounted) {
+          setMiniTrackingLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    const refreshInterval = setInterval(() => {
+      void refreshMiniDisruptionState().catch(() => {
+        if (isMounted) {
+          setMiniWeatherSummary('Could not refresh disruption status');
+        }
+      });
+    }, 60_000);
+
+    const timerInterval = setInterval(() => {
+      if (isMounted) {
+        setMiniClockMs(Date.now());
+      }
+    }, 1_000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshInterval);
+      clearInterval(timerInterval);
+    };
+  }, [isActive, isPremiumTab, refreshMiniDisruptionState]);
+
+  const miniElapsedMs = miniIsTracking && miniTrackedStartMs
+    ? Math.max(0, miniClockMs - miniTrackedStartMs)
+    : 0;
 
   const handleSignOut = async () => {
     await signOut();
@@ -251,48 +354,96 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor="#00E5A0" />}
       >
-        <View style={styles.walletCard}>
-          <View style={styles.walletHeader}>
-            <View>
-              <Text style={styles.walletEyebrow}>Wallet card</Text>
-              <Text style={styles.walletTitle}>Total balance</Text>
-            </View>
-            <View style={styles.walletChip}>
-              <Text style={styles.walletChipText}>{hasRedeemableBalance ? 'Ready to redeem' : 'No balance yet'}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.walletBalance}>{formatCurrency(totalPaidOut)}</Text>
-          <Text style={styles.walletCaption}>
-            Paid claims from your current protection cycle appear here and can be redeemed once available.
-          </Text>
-
-          <View style={styles.walletFooter}>
-            <View style={styles.walletMetaBlock}>
-              <Text style={styles.walletMetaLabel}>Claims credited</Text>
-              <Text style={styles.walletMetaValue}>{claims.filter((claim) => claim.status === 'paid' || claim.status === 'auto_approved').length}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.redeemBtn, !hasRedeemableBalance && styles.redeemBtnDisabled]}
-              onPress={handleRedeem}
-              activeOpacity={0.88}
-              accessibilityRole="button"
-              accessibilityLabel="Redeem wallet balance"
+        {!isPremiumTab ? (
+          <>
+            <View
+              style={[styles.miniTimerCard, miniIsTracking ? styles.miniTimerCardActive : styles.miniTimerCardIdle]}
             >
-              <Text style={styles.redeemBtnText}>Redeem</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              <View style={styles.miniTimerHeader}>
+                <Text style={styles.miniTimerEyebrow}>Active disruption</Text>
+                <Text style={styles.miniTimerCTA}>{needsPlatformConnectForMiniTimer ? 'Required' : 'Open'}</Text>
+              </View>
 
-        {/* Weather Card */}
-        <WeatherCard />
+              {needsPlatformConnectForMiniTimer ? (
+                <>
+                  <Text style={styles.miniTimerValue}>Connect platform</Text>
+                  <Text numberOfLines={2} style={styles.miniTimerSummary}>
+                    {miniWeatherSummary}
+                  </Text>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={styles.miniTimerConnectBtn}
+                    onPress={() => router.push('/platform-connect')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Connect q-commerce platform"
+                  >
+                    <Text style={styles.miniTimerConnectBtnText}>Connect q-commerce</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={onOpenPremium}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open premium tab for disruption details"
+                >
+                  <Text style={styles.miniTimerValue}>
+                    {miniTrackingLoading
+                      ? 'Checking...'
+                      : policy?.status !== 'active'
+                        ? 'No premium plan found'
+                        : miniIsTracking
+                          ? formatDuration(miniElapsedMs)
+                          : 'No active disruption'}
+                  </Text>
 
-        {policy?.status === 'active' ? (
+                  <Text numberOfLines={1} style={styles.miniTimerSummary}>
+                    {miniWeatherSummary}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.walletCard}>
+              <View style={styles.walletHeader}>
+                <View>
+                  <Text style={styles.walletEyebrow}>Wallet card</Text>
+                  <Text style={styles.walletTitle}>Total balance</Text>
+                </View>
+                <View style={styles.walletChip}>
+                  <Text style={styles.walletChipText}>{hasRedeemableBalance ? 'Ready to redeem' : 'No balance yet'}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.walletBalance}>{formatCurrency(totalPaidOut)}</Text>
+              <Text style={styles.walletCaption}>
+                Paid claims from your current protection cycle appear here and can be redeemed once available.
+              </Text>
+
+              <View style={styles.walletFooter}>
+                <View style={styles.walletMetaBlock}>
+                  <Text style={styles.walletMetaLabel}>Claims credited</Text>
+                  <Text style={styles.walletMetaValue}>{claims.filter((claim) => claim.status === 'paid' || claim.status === 'auto_approved').length}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.redeemBtn, !hasRedeemableBalance && styles.redeemBtnDisabled]}
+                  onPress={handleRedeem}
+                  activeOpacity={0.88}
+                  accessibilityRole="button"
+                  accessibilityLabel="Redeem wallet balance"
+                >
+                  <Text style={styles.redeemBtnText}>Redeem</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <WeatherCard />
+          </>
+        ) : policy?.status === 'active' ? (
           <>
             <RainDisruptionCard isActive={isActive} onPolicyRefresh={syncPolicy} policy={policy} user={user} />
 
-            {/* Active policy card */}
             <View style={styles.policyCard}>
               <View style={styles.policyCardHeader}>
                 <Text style={styles.policyCardTitle}>Active protection</Text>
@@ -338,7 +489,6 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
               </TouchableOpacity>
             </View>
 
-            {/* Recent claims */}
             <Text style={styles.sectionTitle}>Recent claims</Text>
             {claims.length === 0 ? (
               <View style={styles.emptyCard}>
@@ -359,7 +509,6 @@ export default function HomeScreen({ isActive = false, bottomInset = 40 }: HomeS
             )}
           </>
         ) : (
-          /* No active policy CTA */
           <View style={styles.ctaCard}>
             <Text style={styles.ctaTitle}>You&apos;re not protected yet</Text>
             <Text style={styles.ctaSubtitle}>
@@ -401,6 +550,65 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
+
+  miniTimerCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  miniTimerCardActive: {
+    backgroundColor: '#102A26',
+    borderColor: '#1D6E61',
+  },
+  miniTimerCardIdle: {
+    backgroundColor: '#131A24',
+    borderColor: '#273549',
+  },
+  miniTimerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  miniTimerEyebrow: {
+    color: '#9FC8F0',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  miniTimerCTA: {
+    color: '#00E5A0',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  miniTimerValue: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  miniTimerSummary: {
+    color: '#8FAECC',
+    fontSize: 12,
+  },
+  miniTimerConnectBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    borderRadius: 12,
+    backgroundColor: '#00E5A0',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  miniTimerConnectBtnText: {
+    color: '#07120D',
+    fontSize: 12,
+    fontWeight: '800',
+  },
 
   walletCard: {
     backgroundColor: '#102235',

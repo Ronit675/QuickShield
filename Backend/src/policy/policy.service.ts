@@ -95,7 +95,7 @@ export class PolicyService {
     await this.expireCompletedPolicies(userId);
 
     const normalizedClaimSessionKey = claimSessionKey?.trim();
-    const normalizedDisruptedHours = Math.max(0, Math.floor(Number(disruptedHours) || 0));
+    const normalizedDisruptedHours = Math.max(0, Number((Number(disruptedHours) || 0).toFixed(4)));
 
     if (!normalizedClaimSessionKey) {
       throw new BadRequestException('claimSessionKey is required.');
@@ -126,9 +126,12 @@ export class PolicyService {
 
     const sessionStartedAtMs = extractSessionStartedAtMs(normalizedClaimSessionKey);
     const completedHoursBeforeToday = sessionStartedAtMs !== null && sessionStartedAtMs < startOfToday.getTime()
-      ? Math.floor((startOfToday.getTime() - sessionStartedAtMs) / MS_PER_HOUR)
+      ? Number(((startOfToday.getTime() - sessionStartedAtMs) / MS_PER_HOUR).toFixed(4))
       : 0;
-    const disruptedHoursForToday = Math.max(0, normalizedDisruptedHours - completedHoursBeforeToday);
+    const disruptedHoursForToday = Math.max(
+      0,
+      Number((normalizedDisruptedHours - completedHoursBeforeToday).toFixed(4)),
+    );
 
     if (disruptedHoursForToday <= 0) {
       return this.getActivePolicy(userId);

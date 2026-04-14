@@ -66,11 +66,59 @@ export default function RainDisruptionCard({
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [clockMs, setClockMs] = useState(Date.now());
   const isCreditingClaimRef = useRef(false);
+  const isTrackingRef = useRef(false);
+  const trackedStartMsRef = useRef<number | null>(null);
+  const trackedClaimSessionKeyRef = useRef<string | null>(null);
 
   const assignedShiftLabel = user?.workingShiftLabel ?? null;
   const hasAssignedShift = Boolean(assignedShiftLabel || user?.workingTimeSlots?.length);
 
+  useEffect(() => {
+    isTrackingRef.current = isTracking;
+  }, [isTracking]);
+
+  useEffect(() => {
+    trackedStartMsRef.current = trackedStartMs;
+  }, [trackedStartMs]);
+
+  useEffect(() => {
+    trackedClaimSessionKeyRef.current = trackedClaimSessionKey;
+  }, [trackedClaimSessionKey]);
+
+  const creditClaimUpToHours = useCallback(async (claimSessionKey: string, totalDisruptedHours: number) => {
+    if (
+      isCreditingClaimRef.current
+      || policy?.status !== 'active'
+      || totalDisruptedHours <= 0
+    ) {
+      return;
+    }
+
+    isCreditingClaimRef.current = true;
+    setIsCreditingClaim(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await api.post('/policy/mock-rain-claim', {
+        claimSessionKey,
+        disruptedHours: Number(totalDisruptedHours.toFixed(4)),
+      });
+
+      await onPolicyRefresh?.(response.data as PolicySummary);
+    } catch (err: any) {
+      setErrorMessage(
+        err?.response?.data?.message || err?.message || 'Could not sync the mock rain payout.',
+      );
+    } finally {
+      setIsCreditingClaim(false);
+      isCreditingClaimRef.current = false;
+    }
+  }, [onPolicyRefresh, policy?.status]);
+
   const refreshRainStatus = useCallback(async () => {
+    const wasTracking = isTrackingRef.current;
+    const previousTrackedStartMs = trackedStartMsRef.current;
+    const previousClaimSessionKey = trackedClaimSessionKeyRef.current;
     const trackingState = await getRainDisruptionTrackingState(user);
 
     setIsWithinWorkingWindow(trackingState.isWithinWorkingWindow);
@@ -80,7 +128,11 @@ export default function RainDisruptionCard({
     setWeatherSummary(trackingState.weatherSummary);
 
     if (!trackingState.isTracking) {
-      setIsCreditingClaim(false);
+      if (wasTracking && previousTrackedStartMs && previousClaimSessionKey && policy?.status === 'active') {
+        const finalDisruptedHours = (Date.now() - previousTrackedStartMs) / MS_PER_HOUR;
+        await creditClaimUpToHours(previousClaimSessionKey, finalDisruptedHours);
+      }
+
       setIsTracking(false);
       setTrackedStartMs(null);
       setTrackedClaimSessionKey(null);
@@ -92,7 +144,7 @@ export default function RainDisruptionCard({
     setTrackedClaimSessionKey(trackingState.trackedClaimSessionKey);
     setTrackedWindowKey(trackingState.trackedWindowKey);
     setIsTracking(true);
-  }, [user]);
+  }, [creditClaimUpToHours, policy?.status, user]);
 
   useEffect(() => {
     if (!isActive) {
@@ -146,11 +198,14 @@ export default function RainDisruptionCard({
   const elapsedTrackedHours = isTracking && trackedStartMs
     ? Math.floor(elapsedMs / MS_PER_HOUR)
     : 0;
+  const elapsedTrackedHoursPrecise = isTracking && trackedStartMs
+    ? elapsedMs / MS_PER_HOUR
+    : 0;
   const perHourCreditAmount = policy?.status === 'active'
     ? (policy.coveragePerDay ?? 0) / HOURS_PER_DAY
     : 0;
   const currentAccruedClaimAmount = policy?.status === 'active'
-    ? perHourCreditAmount * elapsedTrackedHours
+    ? perHourCreditAmount * elapsedTrackedHoursPrecise
     : 0;
 
   const syncTrackedClaim = useCallback(async () => {

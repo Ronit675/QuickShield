@@ -152,20 +152,36 @@ export default function QuickShieldSidebar({
           </View>
 
           <View style={styles.menuSection}>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.menuItem}
-                onPress={item.onPress}
-                activeOpacity={0.88}
-              >
-                <View style={styles.menuIconWrap}>{item.icon}</View>
-                <View style={styles.menuCopy}>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
-                  <Text style={styles.menuHint}>{item.hint}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            <View style={styles.menuItemsWrap}>
+              {menuItems
+                .filter((item) => item.key !== 'signout')
+                .map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={styles.menuItem}
+                    onPress={item.onPress}
+                    activeOpacity={0.88}
+                  >
+                    <View style={styles.menuIconWrap}>{item.icon}</View>
+                    <View style={styles.menuCopy}>
+                      <Text style={styles.menuLabel}>{item.label}</Text>
+                      <Text style={styles.menuHint}>{item.hint}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.signOutItem]}
+              onPress={onSignOutPress}
+              activeOpacity={0.88}
+            >
+              <View style={styles.menuIconWrap}>{menuItems[2].icon}</View>
+              <View style={styles.menuCopy}>
+                <Text style={styles.menuLabel}>{menuItems[2].label}</Text>
+                <Text style={styles.menuHint}>{menuItems[2].hint}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>
@@ -271,7 +287,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   menuSection: {
+    flex: 1,
     gap: 12,
+  },
+  menuItemsWrap: {
+    gap: 12,
+  },
+  signOutItem: {
+    marginTop: 'auto',
   },
   menuItem: {
     flexDirection: 'row',
