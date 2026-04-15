@@ -304,7 +304,7 @@ export default function HomeScreen({
       return;
     }
 
-    if (locationIntegrity.isFlagged) {
+    if (locationIntegrity.flagLevel === 'yellow') {
       if (!hasAskedCurrentFlagRef.current) {
         hasAskedCurrentFlagRef.current = true;
         setFlagQnaAnswer(null);
@@ -322,7 +322,7 @@ export default function HomeScreen({
     setFlagQnaStep('q1');
     setSelectedReturnDateLabel(null);
     setShowCustomDatePicker(false);
-  }, [isActive, isPremiumTab, locationIntegrity.isFlagged, setSelectedReturnDateLabel]);
+  }, [isActive, isPremiumTab, locationIntegrity.flagLevel, setSelectedReturnDateLabel]);
 
   const now = new Date();
   const baseDay = startOfDay(now);
@@ -622,20 +622,51 @@ export default function HomeScreen({
           <View
             style={[
               styles.integrityFlag,
-              locationIntegrity.isFlagged ? styles.integrityFlagWarning : styles.integrityFlagSafe,
+              locationIntegrity.flagLevel === 'red'
+                ? styles.integrityFlagDanger
+                : locationIntegrity.flagLevel === 'yellow'
+                  ? styles.integrityFlagWarning
+                  : locationIntegrity.flagLevel === 'green'
+                    ? styles.integrityFlagRecovery
+                    : styles.integrityFlagSafe,
             ]}
           >
             {locationIntegrity.isChecking ? (
-              <ActivityIndicator color={locationIntegrity.isFlagged ? '#FDE68A' : '#86EFAC'} size="small" />
+              <ActivityIndicator
+                color={
+                  locationIntegrity.flagLevel === 'red'
+                    ? '#FCA5A5'
+                    : locationIntegrity.flagLevel === 'yellow'
+                      ? '#FDE68A'
+                      : locationIntegrity.flagLevel === 'green'
+                        ? '#86EFAC'
+                        : '#86EFAC'
+                }
+                size="small"
+              />
             ) : (
               <Ionicons
                 name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
                 size={18}
-                color={locationIntegrity.isFlagged ? '#FDE68A' : '#86EFAC'}
+                color={
+                  locationIntegrity.flagLevel === 'red'
+                    ? '#FCA5A5'
+                    : locationIntegrity.flagLevel === 'yellow'
+                      ? '#FDE68A'
+                      : locationIntegrity.flagLevel === 'green'
+                        ? '#86EFAC'
+                        : '#86EFAC'
+                }
               />
             )}
             <Text style={styles.integrityLabel}>
-              {locationIntegrity.isFlagged ? 'Yellow Flag' : 'Safe'}
+              {locationIntegrity.flagLevel === 'red'
+                ? 'Red Flag'
+                : locationIntegrity.flagLevel === 'yellow'
+                  ? 'Yellow Flag'
+                  : locationIntegrity.flagLevel === 'green'
+                    ? 'Recovered'
+                    : 'Safe'}
             </Text>
           </View>
         )}
@@ -1056,9 +1087,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0C2B1F',
     borderColor: '#14532D',
   },
+  integrityFlagRecovery: {
+    backgroundColor: '#0F3B2E',
+    borderColor: '#1DAA6E',
+  },
   integrityFlagWarning: {
     backgroundColor: '#3D2F0C',
     borderColor: '#92400E',
+  },
+  integrityFlagDanger: {
+    backgroundColor: '#321118',
+    borderColor: '#7F1D1D',
   },
   integrityLabel: {
     color: '#FFFFFF',

@@ -111,6 +111,7 @@ export default function MainTabsScreen() {
     ? {
       ...locationIntegrity,
       isFlagged: false,
+      flagLevel: 'none' as const,
       reasons: [],
       statusText: 'GPS normal',
       redFlagCount: adjustedRedFlagCount,

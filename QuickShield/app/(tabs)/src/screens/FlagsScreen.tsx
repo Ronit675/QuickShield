@@ -12,6 +12,16 @@ type FlagsScreenProps = {
 
 const formatReason = (reason: LocationIntegrityReason) => {
   switch (reason) {
+    case 'mock_location_detected':
+      return { text: 'Mock location provider detected', icon: 'alert-circle' as const };
+    case 'high_speed':
+      return { text: 'Speed over 80 km/h', icon: 'speedometer' as const };
+    case 'teleportation':
+      return { text: '2 km+ jump in under 90 seconds', icon: 'location' as const };
+    case 'impossible_acceleration':
+      return { text: 'Impossible acceleration detected', icon: 'flash' as const };
+    case 'unnatural_velocity_curve':
+      return { text: 'Unnatural velocity pattern', icon: 'trending-up' as const };
     case 'outside_working_area':
       return { text: 'Outside 25 km working area', icon: 'warning' as const };
     case 'permission_denied':
@@ -57,7 +67,10 @@ const formatTimeAgo = (timestamp: number) => {
 
 export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: FlagsScreenProps) {
   const isFlagged = locationIntegrity.isFlagged;
-  const isYellowFlag = isFlagged;
+  const flagLevel = locationIntegrity.flagLevel;
+  const isYellowFlag = flagLevel === 'yellow';
+  const isRedFlag = flagLevel === 'red';
+  const isGreenFlag = flagLevel === 'green';
   // Sort history by most recent first
   const sortedHistory = [...locationIntegrity.history].reverse();
 
@@ -72,9 +85,34 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
               <Text style={styles.eyebrow}>Flags</Text>
               <Text style={styles.title}>Working Area Monitor</Text>
             </View>
-            <View style={[styles.badge, isYellowFlag ? styles.badgeWarning : styles.badgeSafe]}>
-              <Ionicons name={isYellowFlag ? 'warning' : 'checkmark-circle'} size={16} color={isYellowFlag ? '#FDE68A' : '#86EFAC'} />
-              <Text style={styles.badgeText}>{isYellowFlag ? 'Yellow Flag' : 'Normal'}</Text>
+            <View
+              style={[
+                styles.badge,
+                isRedFlag
+                  ? styles.badgeDanger
+                  : isYellowFlag
+                    ? styles.badgeWarning
+                    : isGreenFlag
+                      ? styles.badgeRecovery
+                      : styles.badgeSafe,
+              ]}
+            >
+              <Ionicons
+                name={isFlagged ? 'warning' : 'checkmark-circle'}
+                size={16}
+                color={
+                  isRedFlag
+                    ? '#FCA5A5'
+                    : isYellowFlag
+                      ? '#FDE68A'
+                      : isGreenFlag
+                        ? '#86EFAC'
+                        : '#86EFAC'
+                }
+              />
+              <Text style={styles.badgeText}>
+                {isRedFlag ? 'Red Flag' : isYellowFlag ? 'Yellow Flag' : isGreenFlag ? 'Recovered' : 'Normal'}
+              </Text>
             </View>
           </View>
 
@@ -178,9 +216,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0C2B1F',
     borderColor: '#14532D',
   },
+  badgeRecovery: {
+    backgroundColor: '#0F3B2E',
+    borderColor: '#1DAA6E',
+  },
   badgeWarning: {
     backgroundColor: '#3D2F0C',
     borderColor: '#92400E',
+  },
+  badgeDanger: {
+    backgroundColor: '#321118',
+    borderColor: '#7F1D1D',
   },
   badgeText: {
     color: '#FFFFFF',
