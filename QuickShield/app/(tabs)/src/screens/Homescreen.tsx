@@ -3,6 +3,7 @@ import {
   Alert, View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, RefreshControl, ActivityIndicator, Switch,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
@@ -15,12 +16,14 @@ import RainDisruptionCard from '../components/RainDisruptionCard';
 import WeatherCard from '../components/WeatherCard';
 import { useLanguage } from '../directory/Languagecontext';
 import type { PolicySummary } from '../types/policy';
+import type { LocationIntegrityState } from '../hooks/useLocationIntegrityMonitor';
 
 type HomeScreenProps = {
   isActive?: boolean;
   bottomInset?: number;
   variant?: 'home' | 'premium';
   onOpenPremium?: () => void;
+  locationIntegrity: LocationIntegrityState;
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -68,6 +71,7 @@ export default function HomeScreen({
   bottomInset = 40,
   variant = 'home',
   onOpenPremium,
+  locationIntegrity,
 }: HomeScreenProps) {
   const { user, setUser } = useAuth();
   const { t } = useLanguage();
@@ -149,7 +153,7 @@ export default function HomeScreen({
     setMiniWeatherSummary(trackingState.weatherSummary);
     setMiniIsTracking(trackingState.isTracking);
     setMiniTrackedStartMs(trackingState.trackedStartMs);
-  }, [needsPlatformConnectForMiniTimer, user]);
+  }, [needsPlatformConnectForMiniTimer, t, user]);
 
   useEffect(() => {
     if (!isActive || isPremiumTab) {
@@ -383,6 +387,28 @@ export default function HomeScreen({
             <Text style={styles.profileName}>{displayName}</Text>
           </View>
         </View>
+
+        {!isPremiumTab && (
+          <View
+            style={[
+              styles.integrityFlag,
+              locationIntegrity.isFlagged ? styles.integrityFlagDanger : styles.integrityFlagSafe,
+            ]}
+          >
+            {locationIntegrity.isChecking ? (
+              <ActivityIndicator color={locationIntegrity.isFlagged ? '#FCA5A5' : '#86EFAC'} size="small" />
+            ) : (
+              <Ionicons
+                name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
+                size={18}
+                color={locationIntegrity.isFlagged ? '#FCA5A5' : '#86EFAC'}
+              />
+            )}
+            <Text style={styles.integrityLabel}>
+              {locationIntegrity.isFlagged ? 'Flagged' : 'Safe'}
+            </Text>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -614,7 +640,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0F', paddingHorizontal: 20 },
   center: { flex: 1, backgroundColor: '#0A0A0F', justifyContent: 'center', alignItems: 'center' },
   topBar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 60, paddingBottom: 24,
   },
   profileEntry: {
@@ -629,6 +655,29 @@ const styles = StyleSheet.create({
   },
   profileTextWrap: {
     flex: 1,
+  },
+  integrityFlag: {
+    minHeight: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  integrityFlagSafe: {
+    backgroundColor: '#0C2B1F',
+    borderColor: '#14532D',
+  },
+  integrityFlagDanger: {
+    backgroundColor: '#321118',
+    borderColor: '#7F1D1D',
+  },
+  integrityLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },

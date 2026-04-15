@@ -94,6 +94,12 @@ export type MockWeatherDay = {
 export type MockWeatherBundle = {
   generatedAt: string;
   currentHourKey: string;
+  location: {
+    area: string;
+    city: string;
+    label: string;
+    address: string;
+  };
   current: {
     status: string;
     temperatureC: number;
@@ -108,7 +114,15 @@ export type MockWeatherBundle = {
 export type CurrentWeatherSnapshot = {
   rainfallRateMmPerHr: number;
   observedAt: string;
+  locationLabel: string;
 };
+
+export const MOCK_WEATHER_LOCATION = {
+  area: 'Whitefield',
+  city: 'Bengaluru',
+  label: 'Whitefield, Bengaluru',
+  address: 'Whitefield, Bengaluru',
+} as const;
 
 const getIconForRainfall = (rainfallRateMmPerHr: number): MockWeatherIconName =>
   rainfallRateMmPerHr >= 22 ? 'thunderstorm' : 'rainy';
@@ -167,6 +181,9 @@ export const loadMockWeatherForecast = async (): Promise<MockWeatherBundle> => {
   return {
     generatedAt: currentHourKey,
     currentHourKey,
+    location: {
+      ...MOCK_WEATHER_LOCATION,
+    },
     current: {
       status: currentHourSnapshot.condition,
       temperatureC: currentHourSnapshot.temperatureC,
@@ -185,5 +202,6 @@ export const fetchCurrentWeatherSnapshot = async (): Promise<CurrentWeatherSnaps
   return {
     rainfallRateMmPerHr: forecast.current.rainfallRateMmPerHr,
     observedAt: forecast.currentHourKey,
+    locationLabel: forecast.location.label,
   };
 };

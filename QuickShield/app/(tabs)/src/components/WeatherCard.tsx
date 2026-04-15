@@ -32,12 +32,14 @@ export default function WeatherCard() {
   const [weatherData, setWeatherData] = useState<WeatherDay[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(0);
   const [error, setError] = useState<string | null>(null);
+  const [locationLabel, setLocationLabel] = useState('Whitefield, Bengaluru');
 
   const fetchWeather = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const weather = await loadMockWeatherForecast();
+      setLocationLabel(weather.location.label);
       const processedDays: WeatherDay[] = weather.daily.map((day) => ({
         date: day.dateLabel,
         fullDate: day.fullDateLabel,
@@ -100,6 +102,7 @@ export default function WeatherCard() {
         <View>
           <Text style={styles.eyebrow}>{t('weathercard.eyebrow')}</Text>
           <Text style={styles.title}>{t('weathercard.title')}</Text>
+          <Text style={styles.locationText}>{locationLabel}</Text>
         </View>
         <TouchableOpacity onPress={fetchWeather} activeOpacity={0.6} style={styles.refreshBtn}>
           <Ionicons name="refresh" size={18} color="#00E5A0" />
@@ -246,6 +249,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
+  },
+  locationText: {
+    color: '#8B949E',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '600',
   },
   forecastContainer: {
     gap: 12,

@@ -14,8 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HistoryScreen from './HistoryScreen';
 import HomeScreen from './Homescreen';
 import { useLanguage } from '../directory/Languagecontext';
+import { useLocationIntegrityMonitor } from '../hooks/useLocationIntegrityMonitor';
+const FlagsScreen = React.lazy(() => import('./FlagsScreen'));
 
-type TabKey = 'home' | 'premium' | 'history';
+type TabKey = 'home' | 'flags' | 'premium' | 'history';
 
 type TabDefinition = {
   key: TabKey;
@@ -29,8 +31,13 @@ export default function MainTabsScreen() {
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const progress = useRef(new Animated.Value(0)).current;
+  const locationIntegrity = useLocationIntegrityMonitor({
+    enabled: true,
+    pollIntervalMs: 60_000,
+  });
   const TABS: TabDefinition[] = [
     { key: 'home', label: t('tabs.home'), icon: 'home' },
+    { key: 'flags', label: 'Flags', icon: 'flag' },
     { key: 'premium', label: t('tabs.premium'), icon: 'diamond' },
     { key: 'history', label: t('tabs.history'), icon: 'time' },
   ];
@@ -57,7 +64,24 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="home"
             onOpenPremium={() => setActiveTab('premium')}
+            locationIntegrity={locationIntegrity}
           />
+        );
+      case 'flags':
+        return (
+          <React.Suspense
+            fallback={(
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0F' }}>
+                <Text style={{ color: '#D1D5DB', fontSize: 14, fontWeight: '600' }}>Loading flags...</Text>
+              </View>
+            )}
+          >
+            <FlagsScreen
+              isActive={activeTab === 'flags'}
+              bottomInset={contentBottomInset}
+              locationIntegrity={locationIntegrity}
+            />
+          </React.Suspense>
         );
       case 'premium':
         return (
@@ -66,6 +90,7 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="premium"
             onOpenPremium={() => setActiveTab('premium')}
+            locationIntegrity={locationIntegrity}
           />
         );
       case 'history':

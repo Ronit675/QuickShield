@@ -49,6 +49,7 @@ type CurrentWeatherSnapshot = {
   temperatureLabel: string;
   feelsLikeLabel: string;
   humidityLabel: string;
+  locationLabel: string;
 };
 
 type WeatherLoadState =
@@ -111,6 +112,9 @@ function WeatherForecastCard({
       <Text style={styles.forecastSubtitle}>
         Branch-local heavy rainfall used for timer and payout testing.
       </Text>
+      <View style={styles.locationBadge}>
+        <Text style={styles.locationBadgeText}>{currentWeather.locationLabel}</Text>
+      </View>
 
       <View style={styles.currentWeatherCard}>
         <View>
@@ -318,6 +322,7 @@ export default function CreatePolicyRoute() {
         temperatureLabel: `${weather.current.temperatureC}°C`,
         feelsLikeLabel: `${weather.current.feelsLikeC}°C`,
         humidityLabel: `${weather.current.humidityPercent}% humidity`,
+        locationLabel: weather.location.label,
       });
 
       const mappedForecast: ForecastDay[] = weather.daily.map((day) => ({
@@ -552,6 +557,21 @@ const styles = StyleSheet.create({
   forecastCard: { backgroundColor: '#13131A', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#1E1E2E' },
   forecastTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 6 },
   forecastSubtitle: { color: '#7A8597', fontSize: 13, lineHeight: 19, marginBottom: 16 },
+  locationBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#102235',
+    borderWidth: 1,
+    borderColor: '#2B4763',
+  },
+  locationBadgeText: {
+    color: '#B8D7F0',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   currentWeatherCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 16, padding: 16, backgroundColor: '#0B1512', borderWidth: 1, borderColor: '#1E2E26', marginBottom: 14, gap: 12 },
   currentWeatherLabel: { color: '#8BA798', fontSize: 12, marginBottom: 6 },
   currentWeatherValue: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 4 },
