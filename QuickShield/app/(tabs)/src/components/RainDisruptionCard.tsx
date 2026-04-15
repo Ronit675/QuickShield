@@ -10,6 +10,7 @@ import {
   readStoredRainDisruptionTimer,
   persistStoredRainDisruptionTimer,
 } from '../services/rain-disruption.service';
+import { useLanguage } from '../directory/Languagecontext';
 import type { PolicySummary } from '../types/policy';
 
 type RainDisruptionCardProps = {
@@ -53,12 +54,13 @@ export default function RainDisruptionCard({
   policy,
   user,
 }: RainDisruptionCardProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreditingClaim, setIsCreditingClaim] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [isWithinWorkingWindow, setIsWithinWorkingWindow] = useState(false);
-  const [weatherSummary, setWeatherSummary] = useState('Waiting for mock rain rate');
+  const [weatherSummary, setWeatherSummary] = useState(t('raindisruption.waitingForRain'));
   const [rainfallRateMmPerHr, setRainfallRateMmPerHr] = useState<number | null>(null);
   const [trackedStartMs, setTrackedStartMs] = useState<number | null>(null);
   const [trackedClaimSessionKey, setTrackedClaimSessionKey] = useState<string | null>(null);
@@ -107,13 +109,13 @@ export default function RainDisruptionCard({
       await onPolicyRefresh?.(response.data as PolicySummary);
     } catch (err: any) {
       setErrorMessage(
-        err?.response?.data?.message || err?.message || 'Could not sync the mock rain payout.',
+        err?.response?.data?.message || err?.message || t('raindisruption.syncFailed'),
       );
     } finally {
       setIsCreditingClaim(false);
       isCreditingClaimRef.current = false;
     }
-  }, [onPolicyRefresh, policy?.status]);
+  }, [onPolicyRefresh, policy?.status, t]);
 
   const refreshRainStatus = useCallback(async () => {
     const wasTracking = isTrackingRef.current;
@@ -256,7 +258,7 @@ export default function RainDisruptionCard({
       await onPolicyRefresh?.(response.data as PolicySummary);
     } catch (err: any) {
       setErrorMessage(
-        err?.response?.data?.message || err?.message || 'Could not sync the mock rain payout.',
+        err?.response?.data?.message || err?.message || t('raindisruption.syncFailed'),
       );
     } finally {
       setIsCreditingClaim(false);
@@ -267,6 +269,7 @@ export default function RainDisruptionCard({
     isTracking,
     onPolicyRefresh,
     policy?.status,
+    t,
     trackedStartMs,
     trackedClaimSessionKey,
     trackedWindowKey,
@@ -277,38 +280,48 @@ export default function RainDisruptionCard({
     void syncTrackedClaim();
   }, [syncTrackedClaim]);
 
-  let helperText = 'Rain disruption is not affecting the rider right now.';
+  let helperText = t('raindisruption.notAffectingRider');
 
   if (!hasAssignedShift) {
-    helperText = 'Assign rider working hours first so the app can compare rain against the active shift.';
+    helperText = t('raindisruption.assignWorkingHours');
   } else if (!isWithinWorkingWindow) {
-    helperText = 'The rider is currently outside the configured working slot, so no rain disruption is tracked.';
+    helperText = t('raindisruption.outsideWorkingSlot');
   } else if (!isTracking) {
-    helperText = `Rain rate is below ${RAIN_TRIGGER_THRESHOLD_MM_PER_HR} mm/hr, so the timer has not started.`;
+    helperText = t('raindisruption.rainTooLow', { threshold: String(RAIN_TRIGGER_THRESHOLD_MM_PER_HR) });
   } else if (isTracking && policy?.status !== 'active') {
-    helperText = `Rain rate crossed ${RAIN_TRIGGER_THRESHOLD_MM_PER_HR} mm/hr, but there is no active premium plan selected for a payout.`;
+    helperText = t('raindisruption.rainCrossedNoPlan', { threshold: String(RAIN_TRIGGER_THRESHOLD_MM_PER_HR) });
   } else if (isCreditingClaim) {
-    helperText = `Syncing ${formatCurrency(currentAccruedClaimAmount)} for ${elapsedTrackedHours} completed disrupted hour${elapsedTrackedHours === 1 ? '' : 's'} at ${formatCurrency(perHourCreditAmount)} per hour.`;
+    helperText = t('raindisruption.syncingClaim', {
+      amount: formatCurrency(currentAccruedClaimAmount),
+      hours: String(elapsedTrackedHours),
+      plural: elapsedTrackedHours === 1 ? '' : 's',
+      perHour: formatCurrency(perHourCreditAmount),
+    });
   } else if (isTracking && policy?.status === 'active') {
-    helperText = `${formatCurrency(currentAccruedClaimAmount)} credited across ${elapsedTrackedHours} completed disrupted hour${elapsedTrackedHours === 1 ? '' : 's'} at ${formatCurrency(perHourCreditAmount)} per hour.`;
+    helperText = t('raindisruption.creditedClaim', {
+      amount: formatCurrency(currentAccruedClaimAmount),
+      hours: String(elapsedTrackedHours),
+      plural: elapsedTrackedHours === 1 ? '' : 's',
+      perHour: formatCurrency(perHourCreditAmount),
+    });
   }
 
   const statusLabel = isCreditingClaim
-    ? 'Crediting'
+    ? t('raindisruption.statusCrediting')
     : isTracking
-      ? 'Tracking'
+      ? t('raindisruption.statusTracking')
       : isWithinWorkingWindow
-        ? 'Standby'
-        : 'Idle';
+        ? t('raindisruption.statusStandby')
+        : t('raindisruption.statusIdle');
   const claimLabel = policy?.status === 'active'
     ? formatCurrency(currentAccruedClaimAmount)
-    : 'No plan';
+    : t('raindisruption.noPlan');
 
   if (loading) {
     return (
       <View style={[styles.card, styles.loadingCard]}>
         <ActivityIndicator color="#38BDF8" />
-        <Text style={styles.loadingText}>Checking rain disruption status...</Text>
+        <Text style={styles.loadingText}>{t('raindisruption.checkingStatus')}</Text>
       </View>
     );
   }
@@ -317,8 +330,8 @@ export default function RainDisruptionCard({
     <View style={[styles.card, isTracking ? styles.cardActive : styles.cardIdle]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>Rain disruption</Text>
-          <Text style={styles.title}>Timer card</Text>
+          <Text style={styles.eyebrow}>{t('raindisruption.eyebrow')}</Text>
+          <Text style={styles.title}>{t('raindisruption.timerCard')}</Text>
         </View>
         <View style={[styles.statusBadge, isTracking ? styles.statusBadgeActive : styles.statusBadgeIdle]}>
           <Text style={[styles.statusBadgeText, isTracking ? styles.statusBadgeTextActive : styles.statusBadgeTextIdle]}>
@@ -327,28 +340,31 @@ export default function RainDisruptionCard({
         </View>
       </View>
 
-      <Text style={styles.timerValue}>{isTracking ? formatDuration(elapsedMs) : 'no disruption'}</Text>
+      <Text style={styles.timerValue}>{isTracking ? formatDuration(elapsedMs) : t('raindisruption.noDisruption')}</Text>
       <Text style={styles.summaryText}>
         {isTracking
-          ? `${weatherSummary} during ${assignedShiftLabel ?? 'the active rider slot'}`
+          ? t('raindisruption.duringShift', {
+              weather: weatherSummary,
+              shift: assignedShiftLabel ?? t('raindisruption.activeRiderSlot'),
+            })
           : weatherSummary}
       </Text>
 
       <View style={styles.metricsRow}>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>Working slot</Text>
-          <Text style={styles.metricValue}>{assignedShiftLabel ?? 'Not assigned'}</Text>
+          <Text style={styles.metricLabel}>{t('raindisruption.workingSlot')}</Text>
+          <Text style={styles.metricValue}>{assignedShiftLabel ?? t('raindisruption.notAssigned')}</Text>
         </View>
 
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>Claim</Text>
+          <Text style={styles.metricLabel}>{t('raindisruption.claim')}</Text>
           <Text style={[styles.metricValue, currentAccruedClaimAmount > 0 && styles.claimValueActive]}>{claimLabel}</Text>
         </View>
 
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>Rain rate</Text>
+          <Text style={styles.metricLabel}>{t('raindisruption.rainRate')}</Text>
           <Text style={styles.metricValue}>
-            {rainfallRateMmPerHr !== null ? `${rainfallRateMmPerHr.toFixed(1)} mm/hr` : 'Unavailable'}
+            {rainfallRateMmPerHr !== null ? `${rainfallRateMmPerHr.toFixed(1)} mm/hr` : t('raindisruption.unavailable')}
           </Text>
         </View>
       </View>
@@ -358,7 +374,9 @@ export default function RainDisruptionCard({
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       {lastUpdatedAt ? (
         <Text style={styles.timestampText}>
-          Updated {lastUpdatedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
+          {t('raindisruption.updated', {
+            time: lastUpdatedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+          })}
         </Text>
       ) : null}
     </View>

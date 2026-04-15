@@ -13,6 +13,7 @@ import ProfileAvatar from '../components/ProfileAvatar';
 import QuickShieldSidebar from '../components/QuickShieldSidebar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
 import WeatherCard from '../components/WeatherCard';
+import { useLanguage } from '../directory/Languagecontext';
 import type { PolicySummary } from '../types/policy';
 
 type HomeScreenProps = {
@@ -69,6 +70,7 @@ export default function HomeScreen({
   onOpenPremium,
 }: HomeScreenProps) {
   const { user, setUser } = useAuth();
+  const { t } = useLanguage();
   const [policy, setPolicy] = useState<PolicySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,7 +81,7 @@ export default function HomeScreen({
   const [miniTrackingLoading, setMiniTrackingLoading] = useState(true);
   const [miniIsTracking, setMiniIsTracking] = useState(false);
   const [miniTrackedStartMs, setMiniTrackedStartMs] = useState<number | null>(null);
-  const [miniWeatherSummary, setMiniWeatherSummary] = useState('Waiting for disruption status');
+  const [miniWeatherSummary, setMiniWeatherSummary] = useState(t('home.waitingDisruption'));
   const [miniClockMs, setMiniClockMs] = useState(Date.now());
 
   const fetchPolicy = useCallback(async () => {
@@ -124,8 +126,8 @@ export default function HomeScreen({
     .filter(c => c.status === 'paid' || c.status === 'auto_approved')
     .reduce((s, c) => s + c.payoutAmount, 0);
 
-  const displayName = user?.fullName?.trim() || 'Complete your profile';
-  const contactLine = user?.email || user?.phone || 'Add your details';
+  const displayName = user?.fullName?.trim() || t('home.completeProfile');
+  const contactLine = user?.email || user?.phone || t('home.addDetails');
   const platformLabel = formatPlatformName(user?.platform ?? null);
   const hasRedeemableBalance = totalPaidOut > 0;
   const isPremiumTab = variant === 'premium';
@@ -139,7 +141,7 @@ export default function HomeScreen({
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
       setMiniTrackedStartMs(null);
-      setMiniWeatherSummary('Connect your q-commerce platform to fetch rider income and working slots.');
+      setMiniWeatherSummary(t('home.connectForSlots'));
       return;
     }
 
@@ -167,7 +169,7 @@ export default function HomeScreen({
         if (isMounted) {
           setMiniIsTracking(false);
           setMiniTrackedStartMs(null);
-          setMiniWeatherSummary('Could not refresh disruption status');
+          setMiniWeatherSummary(t('home.disruptionRefreshFailed'));
         }
       } finally {
         if (isMounted) {
@@ -181,7 +183,7 @@ export default function HomeScreen({
     const refreshInterval = setInterval(() => {
       void refreshMiniDisruptionState().catch(() => {
         if (isMounted) {
-          setMiniWeatherSummary('Could not refresh disruption status');
+          setMiniWeatherSummary(t('home.disruptionRefreshFailed'));
         }
       });
     }, 60_000);
@@ -197,7 +199,7 @@ export default function HomeScreen({
       clearInterval(refreshInterval);
       clearInterval(timerInterval);
     };
-  }, [isActive, isPremiumTab, refreshMiniDisruptionState]);
+  }, [isActive, isPremiumTab, refreshMiniDisruptionState, t]);
 
   const miniElapsedMs = miniIsTracking && miniTrackedStartMs
     ? Math.max(0, miniClockMs - miniTrackedStartMs)
@@ -215,22 +217,22 @@ export default function HomeScreen({
 
   const handleRedeem = useCallback(() => {
     Alert.alert(
-      hasRedeemableBalance ? 'Redeem request received' : 'No balance available',
+      hasRedeemableBalance ? t('home.redeemReceivedTitle') : t('home.noBalanceTitle'),
       hasRedeemableBalance
-        ? 'Your wallet balance is ready. Connect the redemption flow when the backend endpoint is available.'
-        : 'Your wallet will show redeemable payouts here as soon as a claim is paid.',
+        ? t('home.redeemReadyMessage')
+        : t('home.redeemEmptyMessage'),
     );
-  }, [hasRedeemableBalance]);
+  }, [hasRedeemableBalance, t]);
 
   const handleGetProtected = useCallback(() => {
     if (user?.platformConnectionStatus !== 'verified') {
       Alert.alert(
-        'Connect your q-commerce platform first',
-        'Connect your rider platform before buying protection so the app can fetch rider details and calculate coverage.',
+        t('home.connectPlatformFirstTitle'),
+        t('home.connectPlatformFirstMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('home.cancel'), style: 'cancel' },
           {
-            text: 'Connect platform',
+            text: t('home.connectPlatform'),
             onPress: () => {
               router.push('/platform-connect');
             },
@@ -243,12 +245,12 @@ export default function HomeScreen({
     if (!isProfileComplete(user)) {
       const missingFields = getIncompleteProfileFields(user);
       Alert.alert(
-        'Complete your profile first',
-        `Finish your ${missingFields.join(', ')} before protecting your income.`,
+        t('home.completeProfileFirstTitle'),
+        t('home.completeProfileFirstMessage', { fields: missingFields.join(', ') }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('home.cancel'), style: 'cancel' },
           {
-            text: 'Go to profile',
+            text: t('home.goToProfile'),
             onPress: () => {
               router.push('/profile');
             },
@@ -259,11 +261,11 @@ export default function HomeScreen({
     }
 
     router.push('/create-policy');
-  }, [user]);
+  }, [t, user]);
 
   const handleToggleAutoRenew = useCallback(async (nextValue: boolean) => {
     if (!policy || policy.status !== 'active') {
-      Alert.alert('No premium plan found', 'Buy a premium plan first to enable auto-renew.');
+      Alert.alert(t('home.noPremiumTitle'), t('home.noPremiumMessage'));
       return;
     }
 
@@ -277,13 +279,13 @@ export default function HomeScreen({
     } catch (err: any) {
       setAutoRenewEnabled(previousValue);
       Alert.alert(
-        'Could not update auto-renew',
-        err?.response?.data?.message || err?.message || 'Please try again.',
+        t('home.autoRenewUpdateFailedTitle'),
+        err?.response?.data?.message || err?.message || t('login.retry'),
       );
     } finally {
       setUpdatingAutoRenew(false);
     }
-  }, [autoRenewEnabled, policy]);
+  }, [autoRenewEnabled, policy, t]);
 
   const handleRemoveActivePolicy = useCallback(async () => {
     setRemovingPolicy(true);
@@ -293,34 +295,34 @@ export default function HomeScreen({
       setPolicy(null);
     } catch (err: any) {
       Alert.alert(
-        'Could not remove calculation',
-        err?.response?.data?.message || err?.message || 'Please try again.',
+        t('home.removeCalcFailedTitle'),
+        err?.response?.data?.message || err?.message || t('login.retry'),
       );
     } finally {
       setRemovingPolicy(false);
     }
-  }, []);
+  }, [t]);
 
   const confirmRemoveActivePolicy = useCallback(async () => {
     const trackingState = await getRainDisruptionTrackingState(user);
     if (trackingState.isTracking) {
       Alert.alert(
-        'Calculation cannot be removed',
-        'You cannot remove the current calculation while an active disruption window is being tracked. Wait for the timer card to stop before removing it.',
+        t('home.calcCannotRemoveTitle'),
+        t('home.calcCannotRemoveMessage'),
       );
       return;
     }
 
     Alert.alert(
-      'Remove current calculation',
-      'Are you sure you want to remove the current calculation?',
+      t('home.removeCalcTitle'),
+      t('home.removeCalcConfirm'),
       [
         {
-          text: 'Cancel',
+          text: t('home.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Remove',
+          text: t('home.remove'),
           style: 'destructive',
           onPress: () => {
             void handleRemoveActivePolicy();
@@ -328,7 +330,7 @@ export default function HomeScreen({
         },
       ],
     );
-  }, [handleRemoveActivePolicy, user]);
+  }, [handleRemoveActivePolicy, t, user]);
 
   if (loading) {
     return (
@@ -356,6 +358,10 @@ export default function HomeScreen({
           setProfileMenuVisible(false);
           router.push('/platform-connect');
         }}
+        onSettingsPress={() => {
+          setProfileMenuVisible(false);
+          router.push('/settings');
+        }}
         onSignOutPress={() => {
           setProfileMenuVisible(false);
           void handleSignOut();
@@ -373,7 +379,7 @@ export default function HomeScreen({
             <ProfileAvatar uri={user?.profilePhoto} size={48} borderRadius={16} />
           </TouchableOpacity>
           <View style={styles.profileTextWrap}>
-            <Text style={styles.greeting}>Greetings Captain 🧑‍✈️</Text>
+            <Text style={styles.greeting}>{t('home.greeting')} 🧑‍✈️</Text>
             <Text style={styles.profileName}>{displayName}</Text>
           </View>
         </View>
@@ -390,13 +396,13 @@ export default function HomeScreen({
               style={[styles.miniTimerCard, miniIsTracking ? styles.miniTimerCardActive : styles.miniTimerCardIdle]}
             >
               <View style={styles.miniTimerHeader}>
-                <Text style={styles.miniTimerEyebrow}>Active disruption</Text>
-                <Text style={styles.miniTimerCTA}>{needsPlatformConnectForMiniTimer ? 'Required' : 'Open'}</Text>
+                <Text style={styles.miniTimerEyebrow}>{t('home.activeDisruption')}</Text>
+                <Text style={styles.miniTimerCTA}>{needsPlatformConnectForMiniTimer ? t('home.required') : t('home.open')}</Text>
               </View>
 
               {needsPlatformConnectForMiniTimer ? (
                 <>
-                  <Text style={styles.miniTimerValue}>Connect platform</Text>
+                  <Text style={styles.miniTimerValue}>{t('home.connectPlatformShort')}</Text>
                   <Text numberOfLines={2} style={styles.miniTimerSummary}>
                     {miniWeatherSummary}
                   </Text>
@@ -405,9 +411,9 @@ export default function HomeScreen({
                     style={styles.miniTimerConnectBtn}
                     onPress={() => router.push('/platform-connect')}
                     accessibilityRole="button"
-                    accessibilityLabel="Connect q-commerce platform"
+                    accessibilityLabel={t('home.connectPlatformA11y')}
                   >
-                    <Text style={styles.miniTimerConnectBtnText}>Connect q-commerce</Text>
+                    <Text style={styles.miniTimerConnectBtnText}>{t('home.connectQcommerce')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
@@ -415,16 +421,16 @@ export default function HomeScreen({
                   activeOpacity={0.9}
                   onPress={onOpenPremium}
                   accessibilityRole="button"
-                  accessibilityLabel="Open premium tab for disruption details"
+                  accessibilityLabel={t('home.openPremiumA11y')}
                 >
                   <Text style={styles.miniTimerValue}>
                     {miniTrackingLoading
-                      ? 'Checking...'
+                      ? t('home.checking')
                       : policy?.status !== 'active'
-                        ? 'No premium plan found'
+                        ? t('home.noPremiumTitle')
                         : miniIsTracking
                           ? formatDuration(miniElapsedMs)
-                          : 'No active disruption'}
+                          : t('home.noActiveDisruption')}
                   </Text>
 
                   <Text numberOfLines={1} style={styles.miniTimerSummary}>

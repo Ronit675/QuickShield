@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { useLanguage } from '../directory/Languagecontext';
+
 type QuickShieldSidebarProps = {
   visible: boolean;
   displayName: string;
@@ -20,6 +22,7 @@ type QuickShieldSidebarProps = {
   onClose: () => void;
   onProfilePress: () => void;
   onPlatformPress: () => void;
+  onSettingsPress: () => void;
   onSignOutPress: () => void;
 };
 
@@ -33,8 +36,10 @@ export default function QuickShieldSidebar({
   onClose,
   onProfilePress,
   onPlatformPress,
+  onSettingsPress,
   onSignOutPress,
 }: QuickShieldSidebarProps) {
+  const { t } = useLanguage();
   const { width } = useWindowDimensions();
   const sidebarWidth = useMemo(() => width * 0.7, [width]);
   const [isMounted, setIsMounted] = useState(visible);
@@ -92,22 +97,29 @@ export default function QuickShieldSidebar({
   const menuItems = [
     {
       key: 'profile',
-      label: 'My profile',
-      hint: 'View and edit your details',
+      label: t('sidebar.myProfile'),
+      hint: t('sidebar.myProfileHint'),
       icon: <Feather name="user" size={20} color="#8BC4FF" />,
       onPress: onProfilePress,
     },
     {
       key: 'platform',
-      label: `Connect ${platformLabel}`,
-      hint: 'Go to your selected q-commerce platform',
+      label: t('sidebar.connectPlatform', { platform: platformLabel }),
+      hint: t('sidebar.connectPlatformHint'),
       icon: <MaterialCommunityIcons name="shield-link-variant-outline" size={22} color="#00E5A0" />,
       onPress: onPlatformPress,
     },
     {
+      key: 'settings',
+      label: t('sidebar.settings'),
+      hint: t('sidebar.settingsHint'),
+      icon: <Feather name="settings" size={20} color="#FFD166" />,
+      onPress: onSettingsPress,
+    },
+    {
       key: 'signout',
-      label: 'Sign out',
-      hint: 'Log out of your QuickShield account',
+      label: t('sidebar.signOut'),
+      hint: t('sidebar.signOutHint'),
       icon: <Feather name="log-out" size={20} color="#FCA5A5" />,
       onPress: onSignOutPress,
     },
@@ -176,10 +188,10 @@ export default function QuickShieldSidebar({
               onPress={onSignOutPress}
               activeOpacity={0.88}
             >
-              <View style={styles.menuIconWrap}>{menuItems[2].icon}</View>
+              <View style={styles.menuIconWrap}>{menuItems[3].icon}</View>
               <View style={styles.menuCopy}>
-                <Text style={styles.menuLabel}>{menuItems[2].label}</Text>
-                <Text style={styles.menuHint}>{menuItems[2].hint}</Text>
+                <Text style={styles.menuLabel}>{menuItems[3].label}</Text>
+                <Text style={styles.menuHint}>{menuItems[3].hint}</Text>
               </View>
             </TouchableOpacity>
           </View>

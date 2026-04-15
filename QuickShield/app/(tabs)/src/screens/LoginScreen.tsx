@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router';
 import { requestPhoneOtp, signInWithGoogle, signInWithPhoneOtp, type AuthUser } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../directory/Languagecontext';
 
 const { width } = Dimensions.get('window');
 type LoginMethod = 'google' | 'phone';
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const [normalizedPhone, setNormalizedPhone] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const { setUser } = useAuth();
+  const { t } = useLanguage();
 
   const routeSignedInUser = (user: AuthUser) => {
     setUser(user);
@@ -46,7 +48,7 @@ export default function LoginScreen() {
       const user = await signInWithGoogle();
       routeSignedInUser(user);
     } catch (err: any) {
-      Alert.alert('Sign in failed', err.message || 'Please try again.');
+      Alert.alert(t('login.signInFailed'), err.message || t('login.retry'));
     } finally {
       setGoogleLoading(false);
     }
@@ -60,12 +62,12 @@ export default function LoginScreen() {
       setOtpRequested(true);
 
       const message = response.debugOtp
-        ? `Use OTP ${response.debugOtp} to continue.`
-        : 'OTP requested. SMS delivery still needs provider setup in production.';
+        ? t('login.otpUse', { otp: response.debugOtp })
+        : t('login.otpRequested');
 
-      Alert.alert('OTP sent', message);
+      Alert.alert(t('login.otpSent'), message);
     } catch (err: any) {
-      Alert.alert('Could not send OTP', err.response?.data?.message || err.message || 'Please try again.');
+      Alert.alert(t('login.otpSendFailed'), err.response?.data?.message || err.message || t('login.retry'));
     } finally {
       setPhoneLoading(false);
     }
@@ -77,7 +79,7 @@ export default function LoginScreen() {
       const user = await signInWithPhoneOtp(normalizedPhone || phone, otp);
       routeSignedInUser(user);
     } catch (err: any) {
-      Alert.alert('OTP verification failed', err.response?.data?.message || err.message || 'Please try again.');
+      Alert.alert(t('login.otpVerifyFailed'), err.response?.data?.message || err.message || t('login.retry'));
     } finally {
       setPhoneLoading(false);
     }
@@ -97,14 +99,14 @@ export default function LoginScreen() {
           <Text style={styles.shieldText}>QS</Text>
         </View>
         <Text style={styles.appName}>QuickShield</Text>
-        <Text style={styles.tagline}>Income protection for riders</Text>
+        <Text style={styles.tagline}>{t('login.tagline')}</Text>
       </View>
 
       <View style={styles.props}>
         {[
-          { icon: '⚡', text: 'Auto-payout in minutes' },
-          { icon: '🌧', text: 'Weather & outage triggers' },
-          { icon: '₹', text: 'From ₹20/week' },
+          { icon: '⚡', text: t('login.propAutoPayout') },
+          { icon: '🌧', text: t('login.propWeatherTriggers') },
+          { icon: '₹', text: t('login.propFromPrice') },
         ].map((item) => (
           <View key={item.text} style={styles.propRow}>
             <Text style={styles.propIcon}>{item.icon}</Text>
@@ -121,7 +123,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             <Text style={[styles.methodTabText, loginMethod === 'google' && styles.methodTabTextActive]}>
-              Google
+              {t('login.methodGoogle')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -130,7 +132,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             <Text style={[styles.methodTabText, loginMethod === 'phone' && styles.methodTabTextActive]}>
-              Phone OTP
+              {t('login.methodPhoneOtp')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -147,13 +149,13 @@ export default function LoginScreen() {
             ) : (
               <>
                 <Text style={styles.googleG}>G</Text>
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+                <Text style={styles.googleBtnText}>{t('login.continueGoogle')}</Text>
               </>
             )}
           </TouchableOpacity>
         ) : (
           <View style={styles.phoneSection}>
-            <Text style={styles.inputLabel}>Mobile number</Text>
+            <Text style={styles.inputLabel}>{t('login.mobileNumber')}</Text>
             <TextInput
               value={phone}
               onChangeText={(value) => {
@@ -164,7 +166,7 @@ export default function LoginScreen() {
                   setNormalizedPhone('');
                 }
               }}
-              placeholder="+91 98765 43210"
+              placeholder={t('login.phonePlaceholder')}
               placeholderTextColor="#4B5563"
               keyboardType="phone-pad"
               style={styles.input}
@@ -174,18 +176,18 @@ export default function LoginScreen() {
 
             {otpRequested && (
               <>
-                <Text style={styles.inputLabel}>6-digit OTP</Text>
+                <Text style={styles.inputLabel}>{t('login.otpLabel')}</Text>
                 <TextInput
                   value={otp}
                   onChangeText={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Enter OTP"
+                  placeholder={t('login.otpPlaceholder')}
                   placeholderTextColor="#4B5563"
                   keyboardType="number-pad"
                   style={styles.input}
                   maxLength={6}
                 />
                 <Text style={styles.helperText}>
-                  Verifying {normalizedPhone || phone}
+                  {t('login.verifying', { phone: normalizedPhone || phone })}
                 </Text>
               </>
             )}
@@ -200,7 +202,7 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#0A0A0F" />
               ) : (
                 <Text style={styles.primaryBtnText}>
-                  {otpRequested ? 'Verify OTP' : 'Send OTP'}
+                  {otpRequested ? t('login.verifyOtp') : t('login.sendOtp')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -212,7 +214,7 @@ export default function LoginScreen() {
                 disabled={phoneLoading}
                 activeOpacity={0.85}
               >
-                <Text style={styles.secondaryBtnText}>Resend OTP</Text>
+                <Text style={styles.secondaryBtnText}>{t('login.resendOtp')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -221,7 +223,7 @@ export default function LoginScreen() {
 
       <View style={styles.bottom}>
         <Text style={styles.disclaimer}>
-          By continuing you agree to our Terms of Service
+          {t('login.terms')}
         </Text>
       </View>
     </KeyboardAvoidingView>

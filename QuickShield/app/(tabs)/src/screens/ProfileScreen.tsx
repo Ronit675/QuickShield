@@ -22,6 +22,7 @@ import DateTimePicker, {
 import { useAuth } from '../context/AuthContext';
 import { updateProfileDetails } from '../services/auth.service';
 import ProfileAvatar from '../components/ProfileAvatar';
+import { useLanguage } from '../directory/Languagecontext';
 
 const parseStoredDob = (value: string | null) => {
   if (!value) return null;
@@ -35,10 +36,10 @@ const formatDobForApi = (value: Date | null) => {
   return value.toISOString().slice(0, 10);
 };
 
-const formatDobForDisplay = (value: Date | null) => {
-  if (!value) return 'Select your date of birth';
+const formatDobForDisplay = (value: Date | null, locale: string, emptyLabel: string) => {
+  if (!value) return emptyLabel;
 
-  return value.toLocaleDateString('en-IN', {
+  return value.toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -64,6 +65,7 @@ const calculateAge = (value: Date | null) => {
 
 export default function ProfileScreen() {
   const { user, setUser } = useAuth();
+  const { language, t } = useLanguage();
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(parseStoredDob(user?.dateOfBirth ?? null));
   const [address, setAddress] = useState(user?.address ?? '');
@@ -75,17 +77,18 @@ export default function ProfileScreen() {
 
   const isGoogleUser = user?.authProvider === 'google';
   const displayName = useMemo(
-    () => fullName.trim() || user?.fullName || 'QuickShield member',
-    [fullName, user?.fullName],
+    () => fullName.trim() || user?.fullName || t('profile.quickshieldMember'),
+    [fullName, t, user?.fullName],
   );
   const age = useMemo(() => calculateAge(dateOfBirth), [dateOfBirth]);
+  const dobLocale = language === 'hi' ? 'hi-IN' : language === 'kn' ? 'kn-IN' : 'en-IN';
 
   const handlePickPhoto = async () => {
     setPickingPhoto(true);
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission needed', 'Allow photo access to upload a profile picture.');
+        Alert.alert(t('profile.permissionNeededTitle'), t('profile.permissionNeededMessage'));
         return;
       }
 
@@ -103,14 +106,14 @@ export default function ProfileScreen() {
 
       const asset = result.assets[0];
       if (!asset?.base64) {
-        Alert.alert('Upload failed', 'Could not read the selected image.');
+        Alert.alert(t('profile.uploadFailedTitle'), t('profile.uploadFailedReadMessage'));
         return;
       }
 
       const mimeType = asset.mimeType || 'image/jpeg';
       setProfilePhoto(`data:${mimeType};base64,${asset.base64}`);
     } catch (err: any) {
-      Alert.alert('Upload failed', err.message || 'Please try again.');
+      Alert.alert(t('profile.uploadFailedTitle'), err.message || t('login.retry'));
     } finally {
       setPickingPhoto(false);
     }
@@ -169,10 +172,10 @@ export default function ProfileScreen() {
         profilePhoto,
       });
       setUser(updatedUser);
-      Alert.alert('Profile saved', 'Your details have been updated.');
+      Alert.alert(t('profile.profileSavedTitle'), t('profile.profileSavedMessage'));
       router.back();
     } catch (err: any) {
-      Alert.alert('Could not save profile', err.response?.data?.message || err.message || 'Please try again.');
+      Alert.alert(t('profile.profileSaveFailedTitle'), err.response?.data?.message || err.message || t('login.retry'));
     } finally {
       setSaving(false);
     }
@@ -187,24 +190,24 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
-            <Text style={styles.backBtnText}>Back</Text>
+            <Text style={styles.backBtnText}>{t('profile.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Your profile</Text>
-          <Text style={styles.headerSubtitle}>Complete your identity and contact details.</Text>
+          <Text style={styles.headerTitle}>{t('profile.headerTitle')}</Text>
+          <Text style={styles.headerSubtitle}>{t('profile.headerSubtitle')}</Text>
         </View>
 
         <View style={styles.profileHero}>
           <ProfileAvatar uri={profilePhoto} size={74} borderRadius={24} />
           <View style={styles.profileHeroText}>
             <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.profileMeta}>{user?.phone || user?.email || 'Add your contact details'}</Text>
+            <Text style={styles.profileMeta}>{user?.phone || user?.email || t('profile.addContactDetails')}</Text>
           </View>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Profile photo</Text>
+          <Text style={styles.sectionTitle}>{t('profile.sectionPhotoTitle')}</Text>
           <Text style={styles.helperCaption}>
-            A default placeholder is used until you upload your own picture.
+            {t('profile.sectionPhotoHint')}
           </Text>
 
           <View style={styles.photoRow}>
@@ -219,7 +222,7 @@ export default function ProfileScreen() {
                 {pickingPhoto ? (
                   <ActivityIndicator color="#08110F" />
                 ) : (
-                  <Text style={styles.photoBtnText}>{profilePhoto ? 'Change photo' : 'Upload photo'}</Text>
+                  <Text style={styles.photoBtnText}>{profilePhoto ? t('profile.changePhoto') : t('profile.uploadPhoto')}</Text>
                 )}
               </TouchableOpacity>
               {profilePhoto && (
@@ -229,22 +232,22 @@ export default function ProfileScreen() {
                   disabled={saving}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.photoGhostBtnText}>Use default</Text>
+                  <Text style={styles.photoGhostBtnText}>{t('profile.useDefault')}</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>{t('profile.fullNameLabel')}</Text>
           <TextInput
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Enter your full name"
+            placeholder={t('profile.fullNamePlaceholder')}
             placeholderTextColor="#556070"
             style={styles.input}
           />
 
-          <Text style={styles.label}>DOB</Text>
+          <Text style={styles.label}>{t('profile.dobLabel')}</Text>
           <TouchableOpacity
             style={styles.dateField}
             onPress={openDobPicker}
@@ -252,9 +255,9 @@ export default function ProfileScreen() {
           >
             <View style={styles.dateFieldTextWrap}>
               <Text style={[styles.dateFieldText, !dateOfBirth && styles.dateFieldPlaceholder]}>
-                {formatDobForDisplay(dateOfBirth)}
+                {formatDobForDisplay(dateOfBirth, dobLocale, t('profile.dobPlaceholder'))}
               </Text>
-              <Text style={styles.dateFieldHint}>Tap to open calendar</Text>
+              <Text style={styles.dateFieldHint}>{t('profile.dobHint')}</Text>
             </View>
             <Text style={styles.dateFieldIcon}>▾</Text>
           </TouchableOpacity>
@@ -273,34 +276,34 @@ export default function ProfileScreen() {
                 onPress={() => setShowIosDobPicker(false)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.iosDateDoneBtnText}>Done</Text>
+                <Text style={styles.iosDateDoneBtnText}>{t('profile.done')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {age !== null && (
             <View style={styles.ageCard}>
-              <Text style={styles.ageLabel}>Calculated age</Text>
-              <Text style={styles.ageValue}>{age} years</Text>
+              <Text style={styles.ageLabel}>{t('profile.calculatedAge')}</Text>
+              <Text style={styles.ageValue}>{age} {t('profile.years')}</Text>
             </View>
           )}
 
-          <Text style={styles.label}>Address</Text>
+          <Text style={styles.label}>{t('profile.addressLabel')}</Text>
           <TextInput
             value={address}
             onChangeText={setAddress}
-            placeholder="Enter your address"
+            placeholder={t('profile.addressPlaceholder')}
             placeholderTextColor="#556070"
             style={[styles.input, styles.textArea]}
             multiline
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t('profile.emailLabel')}</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="Enter your email"
+            placeholder={t('profile.emailPlaceholder')}
             placeholderTextColor="#556070"
             style={[styles.input, isGoogleUser && styles.inputDisabled]}
             autoCapitalize="none"
@@ -309,7 +312,7 @@ export default function ProfileScreen() {
           />
           {isGoogleUser && (
             <Text style={styles.helperText}>
-              Google accounts keep their sign-in email locked to avoid duplicate accounts.
+              {t('profile.googleEmailLocked')}
             </Text>
           )}
 
@@ -322,7 +325,7 @@ export default function ProfileScreen() {
             {saving ? (
               <ActivityIndicator color="#08110F" />
             ) : (
-              <Text style={styles.saveBtnText}>Save profile</Text>
+              <Text style={styles.saveBtnText}>{t('profile.saveProfile')}</Text>
             )}
           </TouchableOpacity>
         </View>

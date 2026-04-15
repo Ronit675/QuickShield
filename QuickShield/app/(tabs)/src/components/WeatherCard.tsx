@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity
 import { Ionicons } from '@expo/vector-icons';
 
 import { loadMockWeatherForecast, type MockWeatherIconName } from '../services/weather';
+import { useLanguage } from '../directory/Languagecontext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -26,6 +27,7 @@ type WeatherDay = {
 };
 
 export default function WeatherCard() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [weatherData, setWeatherData] = useState<WeatherDay[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(0);
@@ -54,11 +56,11 @@ export default function WeatherCard() {
       setWeatherData(processedDays);
     } catch (err: any) {
       console.error('Mock weather error:', err);
-      setError(err.message || 'Failed to load mock heavy-rain weather. Tap to retry.');
+      setError(err.message || t('weathercard.errorText'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchWeather();
@@ -73,7 +75,7 @@ export default function WeatherCard() {
     return (
       <View style={[styles.card, styles.center]}>
         <ActivityIndicator color="#00E5A0" />
-        <Text style={styles.loadingText}>Loading mock heavy-rain weather...</Text>
+        <Text style={styles.loadingText}>{t('weathercard.loadingText')}</Text>
       </View>
     );
   }
@@ -84,7 +86,7 @@ export default function WeatherCard() {
         <Ionicons name="cloud-offline" size={40} color="#FCA5A5" />
         <Text style={styles.errorText}>{error}</Text>
         <View style={styles.retryBtn}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('weathercard.retryText')}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -96,8 +98,8 @@ export default function WeatherCard() {
     <View style={styles.card}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>Mock Forecast</Text>
-          <Text style={styles.title}>7-Day Rain Test</Text>
+          <Text style={styles.eyebrow}>{t('weathercard.eyebrow')}</Text>
+          <Text style={styles.title}>{t('weathercard.title')}</Text>
         </View>
         <TouchableOpacity onPress={fetchWeather} activeOpacity={0.6} style={styles.refreshBtn}>
           <Ionicons name="refresh" size={18} color="#00E5A0" />
@@ -137,7 +139,7 @@ export default function WeatherCard() {
       {selectedDay && (
         <View style={styles.hourlyContainer}>
           <View style={styles.hourlyHeader}>
-            <Text style={styles.hourlyTitle}>Hourly: {selectedDay.fullDate}</Text>
+          <Text style={styles.hourlyTitle}>{t('weathercard.hourlyTitle')}: {selectedDay.fullDate}</Text>
             <View style={styles.conditionBadge}>
               <Text style={styles.conditionText}>{selectedDay.condition}</Text>
             </View>
@@ -169,7 +171,7 @@ export default function WeatherCard() {
       <View style={styles.footer}>
         <Ionicons name="information-circle-outline" size={14} color="#8B949E" style={{ marginRight: 6 }} />
         <Text style={styles.caption}>
-          {selectedDayIndex === 0 ? 'Using branch mock weather to simulate heavy rainfall.' : `Mock heavy-rain forecast for ${selectedDay?.date}.`}
+          {selectedDayIndex === 0 ? t('weathercard.captionCurrentDay') : t('weathercard.captionOtherDay', { date: selectedDay?.date ?? '' })}
         </Text>
       </View>
     </View>

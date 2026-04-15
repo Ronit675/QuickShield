@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HistoryScreen from './HistoryScreen';
 import HomeScreen from './Homescreen';
+import { useLanguage } from '../directory/Languagecontext';
 
 type TabKey = 'home' | 'premium' | 'history';
 
@@ -22,17 +23,17 @@ type TabDefinition = {
   icon: keyof typeof Ionicons.glyphMap;
 };
 
-const TABS: TabDefinition[] = [
-  { key: 'home', label: 'Home', icon: 'home' },
-  { key: 'premium', label: 'Premium', icon: 'diamond' },
-  { key: 'history', label: 'History', icon: 'time' },
-];
-
 export default function MainTabsScreen() {
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const progress = useRef(new Animated.Value(0)).current;
+  const TABS: TabDefinition[] = [
+    { key: 'home', label: t('tabs.home'), icon: 'home' },
+    { key: 'premium', label: t('tabs.premium'), icon: 'diamond' },
+    { key: 'history', label: t('tabs.history'), icon: 'time' },
+  ];
   const activeIndex = TABS.findIndex((tab) => tab.key === activeTab);
 
   useEffect(() => {
