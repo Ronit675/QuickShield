@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -30,6 +30,11 @@ export default function MainTabsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [isClaimsFeatureDisabled, setIsClaimsFeatureDisabled] = useState(false);
+  const [selectedReturnDateLabel, setSelectedReturnDateLabel] = useState<string | null>(null);
+  const [outOfTownUntilDate, setOutOfTownUntilDate] = useState<Date | null>(null);
+  const [flagCounterOffset, setFlagCounterOffset] = useState(0);
+  const [forceGreenUntilMs, setForceGreenUntilMs] = useState<number | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
   const locationIntegrity = useLocationIntegrityMonitor({
     enabled: true,
@@ -52,6 +57,48 @@ export default function MainTabsScreen() {
     }).start();
   }, [activeIndex, progress]);
 
+  useEffect(() => {
+    if (!forceGreenUntilMs) {
+      return;
+    }
+
+    if (Date.now() >= forceGreenUntilMs) {
+      setForceGreenUntilMs(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setForceGreenUntilMs(null);
+    }, forceGreenUntilMs - Date.now());
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [forceGreenUntilMs]);
+
+  const handleImBackRecovered = useCallback(() => {
+    setFlagCounterOffset((previousOffset) => {
+      const currentCount = locationIntegrity.redFlagCount + previousOffset;
+      return currentCount > 0 ? previousOffset - 1 : previousOffset;
+    });
+    setForceGreenUntilMs(Date.now() + 70_000);
+  }, [locationIntegrity.redFlagCount]);
+
+  const adjustedRedFlagCount = Math.max(0, locationIntegrity.redFlagCount + flagCounterOffset);
+  const shouldForceGreen = Boolean(forceGreenUntilMs && Date.now() < forceGreenUntilMs);
+  const sharedLocationIntegrity = shouldForceGreen
+    ? {
+      ...locationIntegrity,
+      isFlagged: false,
+      reasons: [],
+      statusText: 'GPS normal',
+      redFlagCount: adjustedRedFlagCount,
+    }
+    : {
+      ...locationIntegrity,
+      redFlagCount: adjustedRedFlagCount,
+    };
+
   const baseTabHeight = width >= 768 ? 84 : 74;
   const contentBottomInset = baseTabHeight + Math.max(insets.bottom, 12) + 20;
 
@@ -64,7 +111,14 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="home"
             onOpenPremium={() => setActiveTab('premium')}
-            locationIntegrity={locationIntegrity}
+            locationIntegrity={sharedLocationIntegrity}
+            isClaimsFeatureDisabled={isClaimsFeatureDisabled}
+            setIsClaimsFeatureDisabled={setIsClaimsFeatureDisabled}
+            selectedReturnDateLabel={selectedReturnDateLabel}
+            setSelectedReturnDateLabel={setSelectedReturnDateLabel}
+            outOfTownUntilDate={outOfTownUntilDate}
+            setOutOfTownUntilDate={setOutOfTownUntilDate}
+            onImBackRecovered={handleImBackRecovered}
           />
         );
       case 'flags':
@@ -79,7 +133,7 @@ export default function MainTabsScreen() {
             <FlagsScreen
               isActive={activeTab === 'flags'}
               bottomInset={contentBottomInset}
-              locationIntegrity={locationIntegrity}
+              locationIntegrity={sharedLocationIntegrity}
             />
           </React.Suspense>
         );
@@ -90,7 +144,14 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="premium"
             onOpenPremium={() => setActiveTab('premium')}
-            locationIntegrity={locationIntegrity}
+            locationIntegrity={sharedLocationIntegrity}
+            isClaimsFeatureDisabled={isClaimsFeatureDisabled}
+            setIsClaimsFeatureDisabled={setIsClaimsFeatureDisabled}
+            selectedReturnDateLabel={selectedReturnDateLabel}
+            setSelectedReturnDateLabel={setSelectedReturnDateLabel}
+            outOfTownUntilDate={outOfTownUntilDate}
+            setOutOfTownUntilDate={setOutOfTownUntilDate}
+            onImBackRecovered={handleImBackRecovered}
           />
         );
       case 'history':

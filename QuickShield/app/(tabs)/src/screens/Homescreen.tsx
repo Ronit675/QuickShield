@@ -1,21 +1,29 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, View, Text, TouchableOpacity, StyleSheet,
+  Alert, View, Text, TouchableOpacity, StyleSheet, Modal,
   StatusBar, ScrollView, RefreshControl, ActivityIndicator, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getIncompleteProfileFields, isProfileComplete, signOut } from '../services/auth.service';
-import { getRainDisruptionTrackingState } from '../services/rain-disruption.service';
+import {
+  clearStoredRainDisruptionTimer,
+  getRainDisruptionStorageKey,
+  getRainDisruptionTrackingState,
+} from '../services/rain-disruption.service';
 import ProfileAvatar from '../components/ProfileAvatar';
 import QuickShieldSidebar from '../components/QuickShieldSidebar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
 import WeatherCard from '../components/WeatherCard';
 import { useLanguage } from '../directory/Languagecontext';
 import type { PolicySummary } from '../types/policy';
+import { isWithinWorkingAreaRadius } from '../hooks/useLocationIntegrityMonitor';
 import type { LocationIntegrityState } from '../hooks/useLocationIntegrityMonitor';
 
 type HomeScreenProps = {
@@ -24,6 +32,13 @@ type HomeScreenProps = {
   variant?: 'home' | 'premium';
   onOpenPremium?: () => void;
   locationIntegrity: LocationIntegrityState;
+  isClaimsFeatureDisabled: boolean;
+  setIsClaimsFeatureDisabled: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedReturnDateLabel: string | null;
+  setSelectedReturnDateLabel: React.Dispatch<React.SetStateAction<string | null>>;
+  outOfTownUntilDate: Date | null;
+  setOutOfTownUntilDate: React.Dispatch<React.SetStateAction<Date | null>>;
+  onImBackRecovered?: () => void;
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -66,12 +81,30 @@ const formatDuration = (durationMs: number) => {
   return `${seconds}s`;
 };
 
+const formatDateOptionLabel = (date: Date) => date.toLocaleDateString('en-GB', {
+  day: '2-digit',
+  month: '2-digit',
+});
+
+const startOfDay = (date: Date) => {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+};
+
 export default function HomeScreen({
   isActive = false,
   bottomInset = 40,
   variant = 'home',
   onOpenPremium,
   locationIntegrity,
+  isClaimsFeatureDisabled,
+  setIsClaimsFeatureDisabled,
+  selectedReturnDateLabel,
+  setSelectedReturnDateLabel,
+  outOfTownUntilDate,
+  setOutOfTownUntilDate,
+  onImBackRecovered,
 }: HomeScreenProps) {
   const { user, setUser } = useAuth();
   const { t } = useLanguage();
@@ -87,6 +120,12 @@ export default function HomeScreen({
   const [miniTrackedStartMs, setMiniTrackedStartMs] = useState<number | null>(null);
   const [miniWeatherSummary, setMiniWeatherSummary] = useState(t('home.waitingDisruption'));
   const [miniClockMs, setMiniClockMs] = useState(Date.now());
+  const [showFlagQna, setShowFlagQna] = useState(false);
+  const [flagQnaAnswer, setFlagQnaAnswer] = useState<'yes' | 'no' | null>(null);
+  const [flagQnaStep, setFlagQnaStep] = useState<'q1' | 'return_date'>('q1');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [isCheckingImBack, setIsCheckingImBack] = useState(false);
+  const hasAskedCurrentFlagRef = useRef(false);
 
   const fetchPolicy = useCallback(async () => {
     try {
@@ -141,6 +180,18 @@ export default function HomeScreen({
     || !user?.workingTimeSlots?.length;
 
   const refreshMiniDisruptionState = useCallback(async () => {
+    if (isClaimsFeatureDisabled) {
+      setMiniTrackingLoading(false);
+      setMiniIsTracking(false);
+      setMiniTrackedStartMs(null);
+      setMiniWeatherSummary(
+        outOfTownUntilDate
+          ? `Claims disabled until ${formatDateOptionLabel(outOfTownUntilDate)}. Tap I'm Back after returning to your working area.`
+          : "Claims feature is temporarily disabled. Tap I'm Back after returning to your working area.",
+      );
+      return;
+    }
+
     if (needsPlatformConnectForMiniTimer) {
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
@@ -153,7 +204,7 @@ export default function HomeScreen({
     setMiniWeatherSummary(trackingState.weatherSummary);
     setMiniIsTracking(trackingState.isTracking);
     setMiniTrackedStartMs(trackingState.trackedStartMs);
-  }, [needsPlatformConnectForMiniTimer, t, user]);
+  }, [isClaimsFeatureDisabled, needsPlatformConnectForMiniTimer, outOfTownUntilDate, t, user]);
 
   useEffect(() => {
     if (!isActive || isPremiumTab) {
@@ -210,8 +261,181 @@ export default function HomeScreen({
     : 0;
 
   useEffect(() => {
+    if (!isClaimsFeatureDisabled || !outOfTownUntilDate) {
+      return;
+    }
+
+    const endOfSelectedDay = new Date(outOfTownUntilDate);
+    endOfSelectedDay.setHours(23, 59, 59, 999);
+
+    if (Date.now() > endOfSelectedDay.getTime()) {
+      setIsClaimsFeatureDisabled(false);
+      setOutOfTownUntilDate(null);
+      setSelectedReturnDateLabel(null);
+      return;
+    }
+
+    const unlockInterval = setInterval(() => {
+      if (Date.now() > endOfSelectedDay.getTime()) {
+        setIsClaimsFeatureDisabled(false);
+        setOutOfTownUntilDate(null);
+        setSelectedReturnDateLabel(null);
+      }
+    }, 60_000);
+
+    return () => {
+      clearInterval(unlockInterval);
+    };
+  }, [
+    isClaimsFeatureDisabled,
+    outOfTownUntilDate,
+    setIsClaimsFeatureDisabled,
+    setOutOfTownUntilDate,
+    setSelectedReturnDateLabel,
+  ]);
+
+  useEffect(() => {
     setAutoRenewEnabled(Boolean(policy?.riskSnapshot?.autoRenew));
   }, [policy?.id, policy?.riskSnapshot?.autoRenew]);
+
+  useEffect(() => {
+    if (isPremiumTab || !isActive) {
+      return;
+    }
+
+    if (locationIntegrity.isFlagged) {
+      if (!hasAskedCurrentFlagRef.current) {
+        hasAskedCurrentFlagRef.current = true;
+        setFlagQnaAnswer(null);
+        setFlagQnaStep('q1');
+        setSelectedReturnDateLabel(null);
+        setShowCustomDatePicker(false);
+        setShowFlagQna(true);
+      }
+      return;
+    }
+
+    hasAskedCurrentFlagRef.current = false;
+    setShowFlagQna(false);
+    setFlagQnaAnswer(null);
+    setFlagQnaStep('q1');
+    setSelectedReturnDateLabel(null);
+    setShowCustomDatePicker(false);
+  }, [isActive, isPremiumTab, locationIntegrity.isFlagged, setSelectedReturnDateLabel]);
+
+  const now = new Date();
+  const baseDay = startOfDay(now);
+  const returnDateOptions = [
+    { key: 'today', label: 'Today', dateLabel: formatDateOptionLabel(baseDay), date: baseDay },
+    {
+      key: 'tomorrow',
+      label: 'Tomorrow',
+      dateLabel: formatDateOptionLabel(new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 1)),
+      date: new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 1),
+    },
+    {
+      key: 'plus2',
+      label: formatDateOptionLabel(new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 2)),
+      dateLabel: null,
+      date: new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 2),
+    },
+    {
+      key: 'plus3',
+      label: formatDateOptionLabel(new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 3)),
+      dateLabel: null,
+      date: new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 3),
+    },
+    {
+      key: 'plus4',
+      label: formatDateOptionLabel(new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 4)),
+      dateLabel: null,
+      date: new Date(baseDay.getFullYear(), baseDay.getMonth(), baseDay.getDate() + 4),
+    },
+  ];
+
+  const handleReturnDateSelect = (label: string, selectedDate?: Date) => {
+    const matchingOption = returnDateOptions.find((option) => {
+      const optionLabel = option.dateLabel
+        ? `${option.label} (${option.dateLabel})`
+        : option.label;
+      return optionLabel === label;
+    });
+
+    setSelectedReturnDateLabel(label);
+    setOutOfTownUntilDate(selectedDate ?? (matchingOption ? new Date(matchingOption.date) : null));
+    setIsClaimsFeatureDisabled(true);
+    setMiniIsTracking(false);
+    setMiniTrackedStartMs(null);
+    void clearStoredRainDisruptionTimer(getRainDisruptionStorageKey(user?.id));
+    setShowFlagQna(false);
+  };
+
+  const handleCustomDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowCustomDatePicker(false);
+    if (event.type === 'dismissed' || !selectedDate) {
+      return;
+    }
+
+    const normalized = startOfDay(selectedDate);
+    const label = formatDateOptionLabel(normalized);
+    handleReturnDateSelect(label, normalized);
+  };
+
+  const handleImBack = useCallback(async () => {
+    setIsCheckingImBack(true);
+
+    try {
+      const existingPermission = await Location.getForegroundPermissionsAsync();
+      const permission = existingPermission.granted
+        ? existingPermission
+        : await Location.requestForegroundPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert('Location required', "Location access is required to verify you're back in the working area.");
+        return;
+      }
+
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert('GPS off', 'Please enable location services and try again.');
+        return;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+      });
+
+      const isWithinWorkingArea = isWithinWorkingAreaRadius(
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude,
+      );
+
+      if (!isWithinWorkingArea) {
+        Alert.alert(
+          'Still outside working area',
+          "You're still outside the 25 km working area. Claims timer remains disabled.",
+        );
+        return;
+      }
+
+      setIsClaimsFeatureDisabled(false);
+      setOutOfTownUntilDate(null);
+      setSelectedReturnDateLabel(null);
+      onImBackRecovered?.();
+      await refreshMiniDisruptionState();
+      Alert.alert('Welcome back', 'Claims timer is enabled again and the app is now working normally.');
+    } catch {
+      Alert.alert('Location check failed', 'Could not verify your location right now. Please try again.');
+    } finally {
+      setIsCheckingImBack(false);
+    }
+  }, [
+    refreshMiniDisruptionState,
+    setIsClaimsFeatureDisabled,
+    setOutOfTownUntilDate,
+    setSelectedReturnDateLabel,
+    onImBackRecovered,
+  ]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -392,20 +616,20 @@ export default function HomeScreen({
           <View
             style={[
               styles.integrityFlag,
-              locationIntegrity.isFlagged ? styles.integrityFlagDanger : styles.integrityFlagSafe,
+              locationIntegrity.isFlagged ? styles.integrityFlagWarning : styles.integrityFlagSafe,
             ]}
           >
             {locationIntegrity.isChecking ? (
-              <ActivityIndicator color={locationIntegrity.isFlagged ? '#FCA5A5' : '#86EFAC'} size="small" />
+              <ActivityIndicator color={locationIntegrity.isFlagged ? '#FDE68A' : '#86EFAC'} size="small" />
             ) : (
               <Ionicons
                 name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
                 size={18}
-                color={locationIntegrity.isFlagged ? '#FCA5A5' : '#86EFAC'}
+                color={locationIntegrity.isFlagged ? '#FDE68A' : '#86EFAC'}
               />
             )}
             <Text style={styles.integrityLabel}>
-              {locationIntegrity.isFlagged ? 'Flagged' : 'Safe'}
+              {locationIntegrity.isFlagged ? 'Yellow Flag' : 'Safe'}
             </Text>
           </View>
         )}
@@ -416,17 +640,65 @@ export default function HomeScreen({
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor="#00E5A0" />}
       >
+        {isClaimsFeatureDisabled && (
+          <View style={styles.imBackCard}>
+            <View style={styles.imBackHeader}>
+              <Ionicons name="pause-circle" size={18} color="#FDE68A" />
+              <Text style={styles.imBackTitle}>Claims timer paused</Text>
+            </View>
+            <Text style={styles.imBackSubtitle}>
+              {selectedReturnDateLabel
+                ? `Feature disabled until ${selectedReturnDateLabel}.`
+                : 'Feature disabled for your selected out-of-town period.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.imBackButton, isCheckingImBack && styles.imBackButtonDisabled]}
+              activeOpacity={0.88}
+              onPress={() => {
+                void handleImBack();
+              }}
+              disabled={isCheckingImBack}
+            >
+              {isCheckingImBack ? (
+                <ActivityIndicator color="#1B1304" />
+              ) : (
+                <Text style={styles.imBackButtonText}>I&apos;m Back</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {!isPremiumTab ? (
           <>
             <View
-              style={[styles.miniTimerCard, miniIsTracking ? styles.miniTimerCardActive : styles.miniTimerCardIdle]}
+              style={[
+                styles.miniTimerCard,
+                isClaimsFeatureDisabled
+                  ? styles.miniTimerCardDisabled
+                  : miniIsTracking
+                    ? styles.miniTimerCardActive
+                    : styles.miniTimerCardIdle,
+              ]}
             >
               <View style={styles.miniTimerHeader}>
                 <Text style={styles.miniTimerEyebrow}>{t('home.activeDisruption')}</Text>
-                <Text style={styles.miniTimerCTA}>{needsPlatformConnectForMiniTimer ? t('home.required') : t('home.open')}</Text>
+                <Text style={styles.miniTimerCTA}>
+                  {isClaimsFeatureDisabled
+                    ? 'Disabled'
+                    : needsPlatformConnectForMiniTimer
+                      ? t('home.required')
+                      : t('home.open')}
+                </Text>
               </View>
 
-              {needsPlatformConnectForMiniTimer ? (
+              {isClaimsFeatureDisabled ? (
+                <>
+                  <Text style={styles.miniTimerValue}>Paused</Text>
+                  <Text numberOfLines={3} style={styles.miniTimerSummary}>
+                    {miniWeatherSummary}
+                  </Text>
+                </>
+              ) : needsPlatformConnectForMiniTimer ? (
                 <>
                   <Text style={styles.miniTimerValue}>{t('home.connectPlatformShort')}</Text>
                   <Text numberOfLines={2} style={styles.miniTimerSummary}>
@@ -446,6 +718,7 @@ export default function HomeScreen({
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={onOpenPremium}
+                  disabled={isClaimsFeatureDisabled}
                   accessibilityRole="button"
                   accessibilityLabel={t('home.openPremiumA11y')}
                 >
@@ -504,7 +777,14 @@ export default function HomeScreen({
           </>
         ) : policy?.status === 'active' ? (
           <>
-            <RainDisruptionCard isActive={isActive} onPolicyRefresh={syncPolicy} policy={policy} user={user} />
+            <RainDisruptionCard
+              isActive={isActive}
+              isPaused={isClaimsFeatureDisabled}
+              pausedUntilLabel={selectedReturnDateLabel}
+              onPolicyRefresh={syncPolicy}
+              policy={policy}
+              user={user}
+            />
 
             <View style={styles.autoRenewCard}>
               <View style={styles.autoRenewHeader}>
@@ -632,6 +912,107 @@ export default function HomeScreen({
           </>
         )}
       </ScrollView>
+
+      {!isPremiumTab && showFlagQna && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => {}}
+        >
+          <BlurView intensity={36} tint="dark" style={styles.qnaOverlay}>
+            <View style={styles.qnaBackdrop} />
+
+            <View style={styles.qnaModalCard}>
+              <View style={styles.qnaImportantBadge}>
+                <Ionicons name="alert-circle" size={14} color="#FDE68A" />
+                <Text style={styles.qnaImportantText}>Important</Text>
+              </View>
+
+              <Text style={styles.qnaTitle}>Action Required</Text>
+              <Text style={styles.qnaSubtitle}>
+                Please complete this QnA to continue using app features.
+              </Text>
+
+              {flagQnaStep === 'q1' ? (
+                <>
+                  <Text style={styles.qnaQuestion}>Q1. Are you out of Town??</Text>
+
+                  <View style={styles.qnaOptionsRow}>
+                    <TouchableOpacity
+                      style={[styles.qnaOptionBtn, flagQnaAnswer === 'yes' && styles.qnaOptionBtnActive]}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setFlagQnaAnswer('yes');
+                        setFlagQnaStep('return_date');
+                      }}
+                    >
+                      <Text style={[styles.qnaOptionText, flagQnaAnswer === 'yes' && styles.qnaOptionTextActive]}>Yes</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.qnaOptionBtn, flagQnaAnswer === 'no' && styles.qnaOptionBtnActive]}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setFlagQnaAnswer('no');
+                        setIsClaimsFeatureDisabled(false);
+                        setOutOfTownUntilDate(null);
+                        setSelectedReturnDateLabel(null);
+                        setShowFlagQna(false);
+                      }}
+                    >
+                      <Text style={[styles.qnaOptionText, flagQnaAnswer === 'no' && styles.qnaOptionTextActive]}>No</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.qnaQuestion}>When you will return?</Text>
+                  <View style={styles.qnaDateOptionsWrap}>
+                    {returnDateOptions.map((option) => {
+                      const optionLabel = option.dateLabel
+                        ? `${option.label} (${option.dateLabel})`
+                        : option.label;
+                      return (
+                        <TouchableOpacity
+                          key={option.key}
+                          style={styles.qnaDateOptionBtn}
+                          activeOpacity={0.9}
+                          onPress={() => handleReturnDateSelect(optionLabel)}
+                        >
+                          <Text style={styles.qnaDateOptionText}>{optionLabel}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={styles.qnaDateOptionBtn}
+                      activeOpacity={0.9}
+                      onPress={() => setShowCustomDatePicker(true)}
+                    >
+                      <Text style={styles.qnaDateOptionText}>Custom Date</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {selectedReturnDateLabel && (
+                    <Text style={styles.qnaSelectionText}>Selected return: {selectedReturnDateLabel}</Text>
+                  )}
+                </>
+              )}
+            </View>
+
+            {showCustomDatePicker && (
+              <DateTimePicker
+                value={baseDay}
+                mode="date"
+                display="default"
+                minimumDate={baseDay}
+                onChange={handleCustomDateChange}
+              />
+            )}
+          </BlurView>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -669,15 +1050,166 @@ const styles = StyleSheet.create({
     backgroundColor: '#0C2B1F',
     borderColor: '#14532D',
   },
-  integrityFlagDanger: {
-    backgroundColor: '#321118',
-    borderColor: '#7F1D1D',
+  integrityFlagWarning: {
+    backgroundColor: '#3D2F0C',
+    borderColor: '#92400E',
   },
   integrityLabel: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  imBackCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#92400E',
+    backgroundColor: '#3D2F0C',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+  },
+  imBackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  imBackTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  imBackSubtitle: {
+    color: '#F6E7B6',
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  imBackButton: {
+    minHeight: 38,
+    borderRadius: 10,
+    backgroundColor: '#FDE68A',
+    borderWidth: 1,
+    borderColor: '#D97706',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imBackButtonDisabled: {
+    opacity: 0.75,
+  },
+  imBackButtonText: {
+    color: '#1B1304',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  qnaOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  qnaBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(2, 6, 14, 0.58)',
+  },
+  qnaModalCard: {
+    width: '100%',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#92400E',
+    backgroundColor: 'rgba(36, 24, 7, 0.96)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  qnaImportantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: '#3D2F0C',
+    borderWidth: 1,
+    borderColor: '#B45309',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  qnaImportantText: {
+    color: '#FDE68A',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  qnaTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  qnaSubtitle: {
+    color: '#E5E7EB',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  qnaQuestion: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  qnaOptionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  qnaOptionBtn: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#B45309',
+    backgroundColor: '#5C4308',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qnaOptionBtnActive: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#92400E',
+  },
+  qnaOptionText: {
+    color: '#FDE68A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  qnaOptionTextActive: {
+    color: '#FFFFFF',
+  },
+  qnaDateOptionsWrap: {
+    gap: 8,
+  },
+  qnaDateOptionBtn: {
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#B45309',
+    backgroundColor: '#5C4308',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  qnaDateOptionText: {
+    color: '#FDE68A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  qnaSelectionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 10,
+    textAlign: 'center',
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
@@ -696,6 +1228,10 @@ const styles = StyleSheet.create({
   miniTimerCardIdle: {
     backgroundColor: '#131A24',
     borderColor: '#273549',
+  },
+  miniTimerCardDisabled: {
+    backgroundColor: '#2F2610',
+    borderColor: '#6E4D10',
   },
   miniTimerHeader: {
     flexDirection: 'row',
@@ -739,6 +1275,25 @@ const styles = StyleSheet.create({
     color: '#07120D',
     fontSize: 12,
     fontWeight: '800',
+  },
+  claimsDisabledCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#6E4D10',
+    backgroundColor: '#2F2610',
+    padding: 16,
+    marginBottom: 16,
+  },
+  claimsDisabledTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  claimsDisabledText: {
+    color: '#E2D5A8',
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   walletCard: {

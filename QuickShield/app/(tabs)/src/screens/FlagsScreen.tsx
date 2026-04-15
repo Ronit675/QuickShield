@@ -12,14 +12,8 @@ type FlagsScreenProps = {
 
 const formatReason = (reason: LocationIntegrityReason) => {
   switch (reason) {
-    case 'high_speed':
-      return { text: 'Speed over 120 km/h', icon: 'speedometer' as const };
-    case 'teleportation':
-      return { text: '50 km+ jump in under a minute', icon: 'location' as const };
-    case 'impossible_acceleration':
-      return { text: 'Impossible acceleration detected', icon: 'flash' as const };
-    case 'unnatural_velocity_curve':
-      return { text: 'Unnatural velocity pattern', icon: 'trending-up' as const };
+    case 'outside_working_area':
+      return { text: 'Outside 25 km working area', icon: 'warning' as const };
     case 'permission_denied':
       return { text: 'Location access denied', icon: 'lock-closed' as const };
     case 'gps_unavailable':
@@ -63,6 +57,7 @@ const formatTimeAgo = (timestamp: number) => {
 
 export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: FlagsScreenProps) {
   const isFlagged = locationIntegrity.isFlagged;
+  const isYellowFlag = isFlagged;
   // Sort history by most recent first
   const sortedHistory = [...locationIntegrity.history].reverse();
 
@@ -75,17 +70,17 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
           <View style={styles.heroTopRow}>
             <View>
               <Text style={styles.eyebrow}>Flags</Text>
-              <Text style={styles.title}>GPS Anomalies</Text>
+              <Text style={styles.title}>Working Area Monitor</Text>
             </View>
-            <View style={[styles.badge, isFlagged ? styles.badgeDanger : styles.badgeSafe]}>
-              <Ionicons name={isFlagged ? 'warning' : 'checkmark-circle'} size={16} color={isFlagged ? '#FCA5A5' : '#86EFAC'} />
-              <Text style={styles.badgeText}>{isFlagged ? 'Alert' : 'Normal'}</Text>
+            <View style={[styles.badge, isYellowFlag ? styles.badgeWarning : styles.badgeSafe]}>
+              <Ionicons name={isYellowFlag ? 'warning' : 'checkmark-circle'} size={16} color={isYellowFlag ? '#FDE68A' : '#86EFAC'} />
+              <Text style={styles.badgeText}>{isYellowFlag ? 'Yellow Flag' : 'Normal'}</Text>
             </View>
           </View>
 
           <View style={styles.countRow}>
             <Text style={styles.countValue}>{locationIntegrity.redFlagCount}</Text>
-            <Text style={styles.countLabel}>anomalies detected in this session</Text>
+            <Text style={styles.countLabel}>working-area breaches detected in this session</Text>
           </View>
 
           <Text style={styles.summary}>{locationIntegrity.statusText}</Text>
@@ -107,7 +102,7 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
                     <View style={styles.timelineContent}>
                       <View style={styles.flagEntryHeader}>
                         <View style={styles.flagEntryIcon}>
-                          <Ionicons name={reason.icon} size={16} color="#FCA5A5" />
+                          <Ionicons name={reason.icon} size={16} color="#FDE68A" />
                         </View>
                         <View style={styles.flagEntryInfo}>
                           <Text style={styles.flagEntryReason}>{reason.text}</Text>
@@ -123,8 +118,8 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="shield-checkmark-outline" size={32} color="#86EFAC" />
-              <Text style={styles.emptyText}>No anomalies detected yet.</Text>
-              <Text style={styles.emptySubtext}>Your location data looks good!</Text>
+              <Text style={styles.emptyText}>No working-area breaches detected yet.</Text>
+              <Text style={styles.emptySubtext}>Rider is inside the 25 km working area.</Text>
             </View>
           )}
         </View>
@@ -158,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   eyebrow: {
-    color: '#FCA5A5',
+    color: '#FDE68A',
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -183,9 +178,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0C2B1F',
     borderColor: '#14532D',
   },
-  badgeDanger: {
-    backgroundColor: '#321118',
-    borderColor: '#7F1D1D',
+  badgeWarning: {
+    backgroundColor: '#3D2F0C',
+    borderColor: '#92400E',
   },
   badgeText: {
     color: '#FFFFFF',
@@ -247,7 +242,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 999,
-    backgroundColor: '#FCA5A5',
+    backgroundColor: '#FDE68A',
     marginRight: 16,
     marginTop: 2,
     zIndex: 2,

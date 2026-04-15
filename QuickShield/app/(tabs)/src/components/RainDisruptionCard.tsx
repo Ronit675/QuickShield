@@ -18,6 +18,8 @@ type RainDisruptionCardProps = {
   onPolicyRefresh?: (nextPolicy?: PolicySummary | null) => Promise<void> | void;
   policy: PolicySummary | null;
   user: AuthUser | null;
+  isPaused?: boolean;
+  pausedUntilLabel?: string | null;
 };
 
 const WEATHER_REFRESH_INTERVAL_MS = 60_000;
@@ -53,6 +55,8 @@ export default function RainDisruptionCard({
   onPolicyRefresh,
   policy,
   user,
+  isPaused = false,
+  pausedUntilLabel = null,
 }: RainDisruptionCardProps) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
@@ -149,7 +153,24 @@ export default function RainDisruptionCard({
   }, [creditClaimUpToHours, policy?.status, user]);
 
   useEffect(() => {
-    if (!isActive) {
+    if (isPaused) {
+      setLoading(false);
+      setErrorMessage(null);
+      setIsTracking(false);
+      setTrackedStartMs(null);
+      setTrackedClaimSessionKey(null);
+      setTrackedWindowKey(null);
+      setRainfallRateMmPerHr(null);
+      setWeatherSummary(
+        pausedUntilLabel
+          ? `Claims timer is paused until ${pausedUntilLabel}. Tap I'm Back on Home after returning.`
+          : "Claims timer is paused. Tap I'm Back on Home after returning.",
+      );
+    }
+  }, [isPaused, pausedUntilLabel]);
+
+  useEffect(() => {
+    if (!isActive || isPaused) {
       return;
     }
 
@@ -194,7 +215,7 @@ export default function RainDisruptionCard({
       clearInterval(refreshInterval);
       clearInterval(timerInterval);
     };
-  }, [isActive, refreshRainStatus]);
+  }, [isActive, isPaused, refreshRainStatus]);
 
   const elapsedMs = isTracking && trackedStartMs ? Math.max(0, clockMs - trackedStartMs) : 0;
   const elapsedTrackedHours = isTracking && trackedStartMs
@@ -282,7 +303,11 @@ export default function RainDisruptionCard({
 
   let helperText = t('raindisruption.notAffectingRider');
 
-  if (!hasAssignedShift) {
+  if (isPaused) {
+    helperText = pausedUntilLabel
+      ? `Timer paused until ${pausedUntilLabel}. Claims calculation will resume once you tap I'm Back within the 25 km working area.`
+      : "Timer paused. Claims calculation will resume once you tap I'm Back within the 25 km working area.";
+  } else if (!hasAssignedShift) {
     helperText = t('raindisruption.assignWorkingHours');
   } else if (!isWithinWorkingWindow) {
     helperText = t('raindisruption.outsideWorkingSlot');
@@ -306,14 +331,18 @@ export default function RainDisruptionCard({
     });
   }
 
-  const statusLabel = isCreditingClaim
+  const statusLabel = isPaused
+    ? 'Paused'
+    : isCreditingClaim
     ? t('raindisruption.statusCrediting')
     : isTracking
       ? t('raindisruption.statusTracking')
       : isWithinWorkingWindow
         ? t('raindisruption.statusStandby')
         : t('raindisruption.statusIdle');
-  const claimLabel = policy?.status === 'active'
+  const claimLabel = isPaused
+    ? 'Paused'
+    : policy?.status === 'active'
     ? formatCurrency(currentAccruedClaimAmount)
     : t('raindisruption.noPlan');
 
@@ -327,22 +356,36 @@ export default function RainDisruptionCard({
   }
 
   return (
-    <View style={[styles.card, isTracking ? styles.cardActive : styles.cardIdle]}>
+    <View style={[styles.card, isPaused ? styles.cardPaused : isTracking ? styles.cardActive : styles.cardIdle]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>{t('raindisruption.eyebrow')}</Text>
           <Text style={styles.title}>{t('raindisruption.timerCard')}</Text>
         </View>
-        <View style={[styles.statusBadge, isTracking ? styles.statusBadgeActive : styles.statusBadgeIdle]}>
-          <Text style={[styles.statusBadgeText, isTracking ? styles.statusBadgeTextActive : styles.statusBadgeTextIdle]}>
+        <View
+          style={[
+            styles.statusBadge,
+            isPaused ? styles.statusBadgePaused : isTracking ? styles.statusBadgeActive : styles.statusBadgeIdle,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusBadgeText,
+              isPaused ? styles.statusBadgeTextPaused : isTracking ? styles.statusBadgeTextActive : styles.statusBadgeTextIdle,
+            ]}
+          >
             {statusLabel}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.timerValue}>{isTracking ? formatDuration(elapsedMs) : t('raindisruption.noDisruption')}</Text>
+      <Text style={styles.timerValue}>
+        {isPaused ? 'Paused' : isTracking ? formatDuration(elapsedMs) : t('raindisruption.noDisruption')}
+      </Text>
       <Text style={styles.summaryText}>
-        {isTracking
+        {isPaused
+          ? weatherSummary
+          : isTracking
           ? t('raindisruption.duringShift', {
               weather: weatherSummary,
               shift: assignedShiftLabel ?? t('raindisruption.activeRiderSlot'),
@@ -401,6 +444,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#11202A',
     borderColor: '#38BDF855',
   },
+  cardPaused: {
+    backgroundColor: '#2F2610',
+    borderColor: '#8A6319',
+  },
   cardIdle: {
     backgroundColor: '#11141B',
     borderColor: '#1E293B',
@@ -439,6 +486,9 @@ const styles = StyleSheet.create({
   statusBadgeActive: {
     backgroundColor: '#38BDF822',
   },
+  statusBadgePaused: {
+    backgroundColor: '#3D2F0C',
+  },
   statusBadgeIdle: {
     backgroundColor: '#1E293B',
   },
@@ -448,6 +498,9 @@ const styles = StyleSheet.create({
   },
   statusBadgeTextActive: {
     color: '#7DD3FC',
+  },
+  statusBadgeTextPaused: {
+    color: '#FDE68A',
   },
   statusBadgeTextIdle: {
     color: '#94A3B8',

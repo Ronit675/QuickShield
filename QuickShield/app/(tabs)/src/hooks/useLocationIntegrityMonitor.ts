@@ -3,19 +3,10 @@ import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 
 export type LocationIntegrityReason =
-  | 'high_speed'
-  | 'teleportation'
-  | 'impossible_acceleration'
-  | 'unnatural_velocity_curve'
+  | 'outside_working_area'
   | 'permission_denied'
   | 'gps_unavailable'
   | 'location_error';
-
-type LocationSample = {
-  latitude: number;
-  longitude: number;
-  timestamp: number;
-};
 
 export type FlagHistoryEntry = {
   reason: LocationIntegrityReason;
@@ -38,18 +29,15 @@ export type LocationIntegrityState = {
 };
 
 const EARTH_RADIUS_KM = 6371;
-const MAX_SAMPLE_HISTORY = 6;
-const MAX_SPEED_HISTORY = 8;
-const MAX_URBAN_DELIVERY_SPEED_KMH = 120;
-const TELEPORT_DISTANCE_KM = 50;
-const TELEPORT_WINDOW_SECONDS = 60;
-const MAX_ALLOWED_ACCELERATION_MS2 = 6.5;
+export const WORKING_AREA_RADIUS_KM = 25;
+export const WORKING_AREA_CENTER = {
+  // Whitefield, Bengaluru
+  latitude: 12.9698,
+  longitude: 77.7499,
+};
 
 const REASON_TEXT: Record<LocationIntegrityReason, string> = {
-  high_speed: 'Speed crossed 120 km/h',
-  teleportation: 'Detected 50 km+ jump in under a minute',
-  impossible_acceleration: 'Acceleration pattern is unrealistic',
-  unnatural_velocity_curve: 'Velocity curve looks unnatural',
+  outside_working_area: 'Outside 25 km working area',
   permission_denied: 'Location permission denied',
   gps_unavailable: 'GPS services are disabled',
   location_error: 'Unable to read current location',
@@ -57,7 +45,10 @@ const REASON_TEXT: Record<LocationIntegrityReason, string> = {
 
 const toRadians = (value: number) => (value * Math.PI) / 180;
 
-const calculateDistanceKm = (a: LocationSample, b: LocationSample) => {
+const calculateDistanceKm = (
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+) => {
   const latDistance = toRadians(b.latitude - a.latitude);
   const lonDistance = toRadians(b.longitude - a.longitude);
 
@@ -72,42 +63,13 @@ const calculateDistanceKm = (a: LocationSample, b: LocationSample) => {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(root));
 };
 
-const kmhToMs = (kmh: number) => kmh / 3.6;
+export const isWithinWorkingAreaRadius = (latitude: number, longitude: number) => {
+  const distanceFromWorkingAreaKm = calculateDistanceKm(
+    { latitude, longitude },
+    WORKING_AREA_CENTER,
+  );
 
-const hasUnnaturalVelocityCurve = (speedsKmh: number[]) => {
-  if (speedsKmh.length < 4) {
-    return false;
-  }
-
-  const windowSpeeds = speedsKmh.slice(-4);
-  const deltas = windowSpeeds.slice(1).map((speed, index) => speed - windowSpeeds[index]);
-  const maxDelta = Math.max(...deltas.map((delta) => Math.abs(delta)));
-  const averageDelta = deltas.reduce((sum, delta) => sum + Math.abs(delta), 0) / deltas.length;
-  const velocityRange = Math.max(...windowSpeeds) - Math.min(...windowSpeeds);
-
-  let signFlips = 0;
-  for (let index = 1; index < deltas.length; index += 1) {
-    if (deltas[index] * deltas[index - 1] < 0) {
-      signFlips += 1;
-    }
-  }
-
-  return signFlips >= 2
-    && maxDelta >= 45
-    && averageDelta >= 30
-    && velocityRange >= 70;
-};
-
-const normalizeTimestamp = (timestamp: number, previousTimestamp: number | null) => {
-  if (previousTimestamp === null) {
-    return timestamp;
-  }
-
-  if (timestamp > previousTimestamp) {
-    return timestamp;
-  }
-
-  return previousTimestamp + 1_000;
+  return distanceFromWorkingAreaKm <= WORKING_AREA_RADIUS_KM;
 };
 
 export const useLocationIntegrityMonitor = ({
@@ -124,8 +86,6 @@ export const useLocationIntegrityMonitor = ({
     history: [],
   });
 
-  const locationSamplesRef = useRef<LocationSample[]>([]);
-  const speedHistoryRef = useRef<number[]>([]);
   const inFlightRef = useRef(false);
   const hasPromptedForPermissionRef = useRef(false);
   const hasPromptedForGpsRef = useRef(false);
@@ -176,16 +136,16 @@ export const useLocationIntegrityMonitor = ({
             hasPromptedForPermissionRef.current = true;
             promptToOpenSettings(
               'Location access required',
-              'QuickShield needs location access to check rider movement every minute and detect spoofing patterns.',
+              'QuickShield needs location access to verify if a rider is within the 25 km working area.',
             );
           }
 
           if (!cancelled) {
             setState((current) => ({
               ...current,
-              isFlagged: true,
+              isFlagged: false,
               isChecking: false,
-              reasons: ['permission_denied'],
+              reasons: [],
               statusText: REASON_TEXT.permission_denied,
               lastCheckedAt: Date.now(),
               history: current.history,
@@ -200,16 +160,16 @@ export const useLocationIntegrityMonitor = ({
             hasPromptedForGpsRef.current = true;
             promptToOpenSettings(
               'Turn on location services',
-              'GPS is off. Enable location services to keep checking for speed, teleportation, acceleration, and velocity anomalies.',
+              'GPS is off. Enable location services to verify if the rider is within the 25 km working area.',
             );
           }
 
           if (!cancelled) {
             setState((current) => ({
               ...current,
-              isFlagged: true,
+              isFlagged: false,
               isChecking: false,
-              reasons: ['gps_unavailable'],
+              reasons: [],
               statusText: REASON_TEXT.gps_unavailable,
               lastCheckedAt: Date.now(),
               history: current.history,
@@ -222,112 +182,35 @@ export const useLocationIntegrityMonitor = ({
           accuracy: Location.Accuracy.Highest,
         });
 
-        const previousSample = locationSamplesRef.current[locationSamplesRef.current.length - 1] ?? null;
-        const normalizedTimestamp = normalizeTimestamp(
-          currentLocation.timestamp ?? Date.now(),
-          previousSample?.timestamp ?? null,
+        const isOutsideWorkingArea = !isWithinWorkingAreaRadius(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude,
         );
-
-        const currentSample: LocationSample = {
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-          timestamp: normalizedTimestamp,
-        };
-
-        const nextSamples = [...locationSamplesRef.current, currentSample].slice(-MAX_SAMPLE_HISTORY);
-        locationSamplesRef.current = nextSamples;
-
-        if (!previousSample) {
-          if (!cancelled) {
-            setState((current) => ({
-              ...current,
-              isFlagged: false,
-              isChecking: false,
-              reasons: [],
-              statusText: 'GPS normal',
-              lastCheckedAt: Date.now(),
-              history: current.history,
-            }));
-          }
-          return;
-        }
-
-        const deltaSeconds = (currentSample.timestamp - previousSample.timestamp) / 1000;
-        if (deltaSeconds <= 0) {
-          if (!cancelled) {
-            setState((current) => ({
-              ...current,
-              isFlagged: false,
-              isChecking: false,
-              reasons: [],
-              statusText: 'GPS normal',
-              lastCheckedAt: Date.now(),
-              history: current.history,
-            }));
-          }
-          return;
-        }
-
-        const distanceKm = calculateDistanceKm(previousSample, currentSample);
-        const speedKmh = distanceKm / (deltaSeconds / 3600);
-        const nextSpeedHistory = [...speedHistoryRef.current, speedKmh].slice(-MAX_SPEED_HISTORY);
-        speedHistoryRef.current = nextSpeedHistory;
-
-        const reasons: LocationIntegrityReason[] = [];
-
-        if (speedKmh > MAX_URBAN_DELIVERY_SPEED_KMH) {
-          reasons.push('high_speed');
-        }
-
-        if (distanceKm >= TELEPORT_DISTANCE_KM && deltaSeconds < TELEPORT_WINDOW_SECONDS) {
-          reasons.push('teleportation');
-        }
-
-        const previousSpeedKmh = nextSpeedHistory.length >= 2
-          ? nextSpeedHistory[nextSpeedHistory.length - 2]
-          : null;
-
-        if (previousSpeedKmh !== null) {
-          const accelerationMs2 = (kmhToMs(speedKmh) - kmhToMs(previousSpeedKmh)) / deltaSeconds;
-          if (Math.abs(accelerationMs2) > MAX_ALLOWED_ACCELERATION_MS2) {
-            reasons.push('impossible_acceleration');
-          }
-        }
-
-        if (hasUnnaturalVelocityCurve(nextSpeedHistory)) {
-          reasons.push('unnatural_velocity_curve');
-        }
-
-        const uniqueReasons = Array.from(new Set(reasons));
-        const isFlagged = uniqueReasons.length > 0;
-        const anomalyReasons = uniqueReasons.filter(
-          (reason) =>
-            reason === 'high_speed'
-            || reason === 'teleportation'
-            || reason === 'impossible_acceleration'
-            || reason === 'unnatural_velocity_curve',
-        );
-        const anomalyDetected = anomalyReasons.length > 0;
+        const uniqueReasons: LocationIntegrityReason[] = isOutsideWorkingArea
+          ? ['outside_working_area']
+          : [];
 
         if (!cancelled) {
           setState((current) => {
             const newHistory = [...current.history];
             const now = Date.now();
-            if (anomalyDetected) {
-              anomalyReasons.forEach((reason) => {
-                newHistory.push({ reason, detectedAt: now });
-              });
+            if (isOutsideWorkingArea) {
+              const wasOutsideLastCheck = current.reasons.includes('outside_working_area');
+              if (!wasOutsideLastCheck) {
+                newHistory.push({ reason: 'outside_working_area', detectedAt: now });
+              }
             }
+
             return {
               ...current,
-              isFlagged,
+              isFlagged: isOutsideWorkingArea,
               isChecking: false,
               reasons: uniqueReasons,
-              statusText: isFlagged
+              statusText: isOutsideWorkingArea
                 ? REASON_TEXT[uniqueReasons[0]]
                 : 'GPS normal',
               lastCheckedAt: now,
-              redFlagCount: current.redFlagCount + (anomalyDetected ? 1 : 0),
+              redFlagCount: current.redFlagCount + (isOutsideWorkingArea && !current.reasons.includes('outside_working_area') ? 1 : 0),
               history: newHistory,
             };
           });
@@ -336,9 +219,9 @@ export const useLocationIntegrityMonitor = ({
         if (!cancelled) {
           setState((current) => ({
             ...current,
-            isFlagged: true,
+            isFlagged: false,
             isChecking: false,
-            reasons: ['location_error'],
+            reasons: [],
             statusText: REASON_TEXT.location_error,
             lastCheckedAt: Date.now(),
             history: current.history,
