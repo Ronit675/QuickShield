@@ -17,6 +17,7 @@ import {
   getRainDisruptionStorageKey,
   getRainDisruptionTrackingState,
 } from '../services/rain-disruption.service';
+import { stopBackgroundLocationTracking } from '../services/location';
 import ProfileAvatar from '../components/ProfileAvatar';
 import QuickShieldSidebar from '../components/QuickShieldSidebar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
@@ -438,6 +439,11 @@ export default function HomeScreen({
   ]);
 
   const handleSignOut = async () => {
+    try {
+      await stopBackgroundLocationTracking();
+    } catch {
+      // Ignore stop failures during logout.
+    }
     await signOut();
     setUser(null);
     router.replace('/login');

@@ -15,6 +15,7 @@ import HistoryScreen from './HistoryScreen';
 import HomeScreen from './Homescreen';
 import { useLanguage } from '../directory/Languagecontext';
 import { useLocationIntegrityMonitor } from '../hooks/useLocationIntegrityMonitor';
+import { startBackgroundLocationTracking } from '../services/location';
 const FlagsScreen = React.lazy(() => import('./FlagsScreen'));
 
 type TabKey = 'home' | 'flags' | 'premium' | 'history';
@@ -56,6 +57,26 @@ export default function MainTabsScreen() {
       useNativeDriver: true,
     }).start();
   }, [activeIndex, progress]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const startTracking = async () => {
+      try {
+        await startBackgroundLocationTracking();
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Background location tracking not started:', error);
+        }
+      }
+    };
+
+    void startTracking();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!forceGreenUntilMs) {
