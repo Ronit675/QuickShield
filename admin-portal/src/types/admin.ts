@@ -55,6 +55,8 @@ export type DashboardCluster = {
   claims: number;
   riskScore: number;
   status: 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  raisedQueries: number;
+  lastRaisedQueryAt: string | null;
 };
 
 export type DashboardOverviewResponse = {

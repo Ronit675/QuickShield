@@ -103,6 +103,11 @@
   gap: 10px;
 }
 
+.cluster-query-meta {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .card-chip.live {
   color: var(--primary);
   border-color: rgba(61, 217, 177, 0.35);

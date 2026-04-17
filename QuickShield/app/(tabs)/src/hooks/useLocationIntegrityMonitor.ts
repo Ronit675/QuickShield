@@ -11,6 +11,7 @@ export type LocationIntegrityReason =
   | 'unnatural_velocity_curve'
   | 'outside_working_area'
   | 'suspicious_outside_working_area'
+  | 'suspicious_query_raised'
   | 'invigilating_location_fluctuation'
   | 'account_suspended_location_pattern'
   | 'permission_denied'
@@ -84,6 +85,7 @@ const SUSPICIOUS_CLAIMS_HOLD_MS = 60 * 60 * 1000;
 const LOCATION_CHANGE_INVIGILATING_THRESHOLD = 4;
 const INVIGILATING_WINDOW_MS = 30 * 60 * 1000;
 const INVIGILATING_CLAIMS_HOLD_MS = 30 * 60 * 1000;
+const INVIGILATING_EVENTS_MIN_FOR_HOLD = 3;
 const LOCATION_CHANGE_PATTERN_WINDOW = 4;
 const LOCATION_CHANGE_PATTERN_MIN_HITS_FOR_SUSPEND = 2;
 const ACCOUNT_SUSPEND_MS = 60 * 60 * 1000;
@@ -99,6 +101,7 @@ const REASON_TEXT: Record<LocationIntegrityReason, string> = {
   unnatural_velocity_curve: 'Velocity curve looks unnatural',
   outside_working_area: 'Outside 10 km working area',
   suspicious_outside_working_area: 'Suspicious movement outside 10 km area during heavy rainfall/working hours',
+  suspicious_query_raised: 'Suspicious case query raised for admin review',
   invigilating_location_fluctuation: 'Invigilating - location changed repeatedly during 5 checks',
   account_suspended_location_pattern: 'Account suspended - repeated changed locations matched rainfall/working-slot pattern',
   permission_denied: 'Location permission denied',
@@ -244,7 +247,9 @@ export const useLocationIntegrityMonitor = ({
   const hasPromptedForGpsRef = useRef(false);
   const hasAppliedHydratedStateRef = useRef(false);
   const hadTeleportationInCurrentRedCycleRef = useRef(false);
+  const hadUnnaturalVelocityInCurrentRedCycleRef = useRef(false);
   const redCycleAnchorLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const redCycleAnchorWeatherRef = useRef<LocationWeatherDetails | null>(null);
   const locationChangeCountInCurrentCycleRef = useRef(0);
   const invigilatingMarkedInCurrentCycleRef = useRef(false);
   const invigilatingEventTimestampsRef = useRef<number[]>([]);
@@ -279,10 +284,12 @@ export const useLocationIntegrityMonitor = ({
     speedHistoryRef.current = [];
     consecutiveInnerRadiusPointsRef.current = 0;
     redCycleAnchorLocationRef.current = null;
+    redCycleAnchorWeatherRef.current = null;
     locationChangeCountInCurrentCycleRef.current = 0;
     invigilatingMarkedInCurrentCycleRef.current = false;
     locationChangeConditionHitsInCurrentCycleRef.current = [];
     hadTeleportationInCurrentRedCycleRef.current = false;
+    hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
 
     setState((current) => ({
       ...current,
@@ -333,7 +340,9 @@ export const useLocationIntegrityMonitor = ({
       hasPromptedForPermissionRef.current = false;
       hasPromptedForGpsRef.current = false;
       hadTeleportationInCurrentRedCycleRef.current = false;
+      hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
       redCycleAnchorLocationRef.current = null;
+      redCycleAnchorWeatherRef.current = null;
       locationChangeCountInCurrentCycleRef.current = 0;
       invigilatingMarkedInCurrentCycleRef.current = false;
       locationChangeConditionHitsInCurrentCycleRef.current = [];
@@ -503,6 +512,9 @@ export const useLocationIntegrityMonitor = ({
         if (uniqueReasons.includes('teleportation')) {
           hadTeleportationInCurrentRedCycleRef.current = true;
         }
+        if (uniqueReasons.includes('unnatural_velocity_curve')) {
+          hadUnnaturalVelocityInCurrentRedCycleRef.current = true;
+        }
 
         if (!cancelled) {
           setState((current) => {
@@ -513,6 +525,7 @@ export const useLocationIntegrityMonitor = ({
             let nextNormalizedAfterRedAt: number | null = current.normalizedAfterRedAt;
             let nextConsecutiveInnerRadiusPoints = consecutiveInnerRadiusPointsRef.current;
             let shouldMarkInvigilatingThisCheck = false;
+            let shouldApplyInvigilatingHoldThisCheck = false;
             let shouldSuspendAccountThisCheck = false;
 
             if (hasSuddenChangeReason) {
@@ -522,10 +535,12 @@ export const useLocationIntegrityMonitor = ({
               nextNormalizedAfterRedAt = null; // Clear recovery timer
               nextConsecutiveInnerRadiusPoints = 0; // Restart 5-check window
               redCycleAnchorLocationRef.current = null;
+              redCycleAnchorWeatherRef.current = null;
               locationChangeCountInCurrentCycleRef.current = 0;
               invigilatingMarkedInCurrentCycleRef.current = false;
               locationChangeConditionHitsInCurrentCycleRef.current = [];
               hadTeleportationInCurrentRedCycleRef.current = uniqueReasons.includes('teleportation');
+              hadUnnaturalVelocityInCurrentRedCycleRef.current = uniqueReasons.includes('unnatural_velocity_curve');
             } else if (isInitialForegroundCheck && isOutsideWorkingArea) {
               // On app open, show yellow for out-of-working-area so the QnA flow can trigger.
               nextFlagLevel = 'yellow';
@@ -533,17 +548,21 @@ export const useLocationIntegrityMonitor = ({
               nextNormalizedAfterRedAt = null;
               nextConsecutiveInnerRadiusPoints = 0;
               redCycleAnchorLocationRef.current = null;
+              redCycleAnchorWeatherRef.current = null;
               locationChangeCountInCurrentCycleRef.current = 0;
               invigilatingMarkedInCurrentCycleRef.current = false;
               locationChangeConditionHitsInCurrentCycleRef.current = [];
               hadTeleportationInCurrentRedCycleRef.current = false;
+              hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
             } else if (current.flagLevel === 'red' && nextRedFlagDetectedAt !== null) {
               if (isLocationWithinInnerRadius) {
                 redCycleAnchorLocationRef.current = null;
+                redCycleAnchorWeatherRef.current = null;
                 locationChangeCountInCurrentCycleRef.current = 0;
                 invigilatingMarkedInCurrentCycleRef.current = false;
                 locationChangeConditionHitsInCurrentCycleRef.current = [];
                 hadTeleportationInCurrentRedCycleRef.current = false;
+                hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
                 if (nextNormalizedAfterRedAt === null) {
                   // Rider re-entered the 10 km zone before/during 5th check; begin 2-minute stability monitoring.
                   nextNormalizedAfterRedAt = now;
@@ -557,10 +576,12 @@ export const useLocationIntegrityMonitor = ({
                   nextNormalizedAfterRedAt = null;
                   nextConsecutiveInnerRadiusPoints = 0;
                   redCycleAnchorLocationRef.current = null;
+                  redCycleAnchorWeatherRef.current = null;
                   locationChangeCountInCurrentCycleRef.current = 0;
                   invigilatingMarkedInCurrentCycleRef.current = false;
                   locationChangeConditionHitsInCurrentCycleRef.current = [];
                   hadTeleportationInCurrentRedCycleRef.current = false;
+                  hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
                 } else if (hasCompletedStabilityMonitor) {
                   // Stable for full 2 minutes inside 10 km zone: clear to green.
                   nextFlagLevel = 'green';
@@ -568,10 +589,12 @@ export const useLocationIntegrityMonitor = ({
                   nextNormalizedAfterRedAt = null;
                   nextConsecutiveInnerRadiusPoints = DURATION_CHECK_GPS_POINTS;
                   redCycleAnchorLocationRef.current = null;
+                  redCycleAnchorWeatherRef.current = null;
                   locationChangeCountInCurrentCycleRef.current = 0;
                   invigilatingMarkedInCurrentCycleRef.current = false;
                   locationChangeConditionHitsInCurrentCycleRef.current = [];
                   hadTeleportationInCurrentRedCycleRef.current = false;
+                  hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
                 } else {
                   nextFlagLevel = 'red';
                 }
@@ -585,12 +608,14 @@ export const useLocationIntegrityMonitor = ({
                 const anchorLocation = redCycleAnchorLocationRef.current;
                 if (!anchorLocation) {
                   redCycleAnchorLocationRef.current = currentOutsideLocation;
+                  redCycleAnchorWeatherRef.current = currentLocationWeather;
                   nextConsecutiveInnerRadiusPoints = 1;
                 } else {
                   const anchorDistanceKm = calculateDistanceKm(anchorLocation, currentOutsideLocation);
                   if (anchorDistanceKm > LOCATION_CHANGE_RESTART_THRESHOLD_KM) {
                     // Location changed during 5 checks; restart checks for this new location.
                     redCycleAnchorLocationRef.current = currentOutsideLocation;
+                    redCycleAnchorWeatherRef.current = currentLocationWeather;
                     nextConsecutiveInnerRadiusPoints = 1;
                     locationChangeCountInCurrentCycleRef.current += 1;
                     const matchesRainAndWorkingSlot = isHeavyRainAtChangedLocation && isWithinWorkingHoursNow;
@@ -617,12 +642,15 @@ export const useLocationIntegrityMonitor = ({
                     ) {
                       shouldMarkInvigilatingThisCheck = true;
                       invigilatingMarkedInCurrentCycleRef.current = true;
-                      invigilatingEventTimestampsRef.current = [
+                      const nextInvigilatingEventTimestamps = [
                         ...invigilatingEventTimestampsRef.current.filter(
                           (timestamp) => now - timestamp <= INVIGILATING_WINDOW_MS,
                         ),
                         now,
                       ];
+                      invigilatingEventTimestampsRef.current = nextInvigilatingEventTimestamps;
+                      shouldApplyInvigilatingHoldThisCheck =
+                        nextInvigilatingEventTimestamps.length >= INVIGILATING_EVENTS_MIN_FOR_HOLD;
                     }
                   } else {
                     // Only advance 5-check count while the outside location is unchanged.
@@ -633,7 +661,11 @@ export const useLocationIntegrityMonitor = ({
                   }
                 }
                 if (nextConsecutiveInnerRadiusPoints >= DURATION_CHECK_GPS_POINTS) {
-                  const shouldMarkSuspicious = isHeavyRainAtChangedLocation
+                  const anchorWeather = redCycleAnchorWeatherRef.current;
+                  const hadMovementAnomalyInCurrentRedCycle = hadTeleportationInCurrentRedCycleRef.current
+                    || hadUnnaturalVelocityInCurrentRedCycleRef.current;
+                  const shouldMarkSuspicious = hadMovementAnomalyInCurrentRedCycle
+                    && Boolean(anchorWeather?.weather.isHeavyRainfall)
                     && isWithinWorkingHoursNow
                     && !isLocationWithinInnerRadius;
 
@@ -644,15 +676,26 @@ export const useLocationIntegrityMonitor = ({
                     nextConsecutiveInnerRadiusPoints = 0;
                     uniqueReasons.splice(0, uniqueReasons.length, 'suspicious_outside_working_area');
                     hadTeleportationInCurrentRedCycleRef.current = false;
+                    hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
                     redCycleAnchorLocationRef.current = null;
+                    redCycleAnchorWeatherRef.current = null;
                     locationChangeCountInCurrentCycleRef.current = 0;
                     invigilatingMarkedInCurrentCycleRef.current = false;
                     locationChangeConditionHitsInCurrentCycleRef.current = [];
                   } else {
-                    // After 5th check, if the rider is still outside 10 km and the suspicious
-                    // conditions are not fully met, keep the red flag active instead of marking recovery.
-                    nextFlagLevel = 'red';
+                    // After the 5th check, if heavy rainfall or working-hours overlap is missing,
+                    // clear the red cycle and mark recovery even if the rider remains outside 10 km.
+                    nextFlagLevel = 'green';
+                    nextRedFlagDetectedAt = null;
+                    nextNormalizedAfterRedAt = null;
                     nextConsecutiveInnerRadiusPoints = DURATION_CHECK_GPS_POINTS;
+                    hadTeleportationInCurrentRedCycleRef.current = false;
+                    hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
+                    redCycleAnchorLocationRef.current = null;
+                    redCycleAnchorWeatherRef.current = null;
+                    locationChangeCountInCurrentCycleRef.current = 0;
+                    invigilatingMarkedInCurrentCycleRef.current = false;
+                    locationChangeConditionHitsInCurrentCycleRef.current = [];
                   }
                 } else {
                   nextFlagLevel = 'red';
@@ -664,20 +707,24 @@ export const useLocationIntegrityMonitor = ({
               nextNormalizedAfterRedAt = null; // Clear recovery timer
               nextConsecutiveInnerRadiusPoints = 0;
               redCycleAnchorLocationRef.current = null;
+              redCycleAnchorWeatherRef.current = null;
               locationChangeCountInCurrentCycleRef.current = 0;
               invigilatingMarkedInCurrentCycleRef.current = false;
               locationChangeConditionHitsInCurrentCycleRef.current = [];
               hadTeleportationInCurrentRedCycleRef.current = false;
+              hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
             } else {
               nextFlagLevel = 'none';
               nextRedFlagDetectedAt = null; // Clear red flag persistence when clearing
               nextNormalizedAfterRedAt = null; // Clear recovery timer
               nextConsecutiveInnerRadiusPoints = 0;
               redCycleAnchorLocationRef.current = null;
+              redCycleAnchorWeatherRef.current = null;
               locationChangeCountInCurrentCycleRef.current = 0;
               invigilatingMarkedInCurrentCycleRef.current = false;
               locationChangeConditionHitsInCurrentCycleRef.current = [];
               hadTeleportationInCurrentRedCycleRef.current = false;
+              hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
             }
 
             consecutiveInnerRadiusPointsRef.current = nextConsecutiveInnerRadiusPoints;
@@ -706,6 +753,8 @@ export const useLocationIntegrityMonitor = ({
                 ? 'GPS normal - rider stable in working area for 2 minutes'
                 : uniqueReasons.includes('suspicious_outside_working_area')
                   ? 'Suspicious case detected after heavy rainfall and working-hours overlap while still outside 10 km. Claims are held for 60 minutes.'
+                : shouldApplyInvigilatingHoldThisCheck
+                  ? 'Invigilating detected repeatedly within 30 minutes. Claims are held for 30 minutes.'
                 : shouldMarkInvigilatingThisCheck
                   ? 'Invigilating - frequent location fluctuations detected.'
                 : shouldSuspendAccountThisCheck
@@ -730,7 +779,7 @@ export const useLocationIntegrityMonitor = ({
                 ? now
                 : current.lastSuspiciousDetectedAt,
               invigilatingHoldUntilMs:
-                shouldMarkInvigilatingThisCheck && invigilatingEventTimestampsRef.current.length > 2
+                shouldApplyInvigilatingHoldThisCheck
                   ? now + INVIGILATING_CLAIMS_HOLD_MS
                   : current.invigilatingHoldUntilMs,
               lastInvigilatingDetectedAt: shouldMarkInvigilatingThisCheck

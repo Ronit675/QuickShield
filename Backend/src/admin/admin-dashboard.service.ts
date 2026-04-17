@@ -14,6 +14,8 @@ type DashboardCluster = {
   claims: number;
   riskScore: number;
   status: 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  raisedQueries: number;
+  lastRaisedQueryAt: string | null;
 };
 
 type DashboardActivity = {
@@ -26,6 +28,7 @@ type DashboardActivity = {
 };
 
 const HOURS_PER_DAY = 24;
+const SUSPICIOUS_QUERY_RAISED_REASON = 'suspicious_query_raised';
 
 const clampPercentage = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -214,53 +217,120 @@ export class AdminDashboardService {
   }
 
   private async getSuspiciousClusters(since: Date): Promise<DashboardCluster[]> {
-    const suspiciousClaims = await this.prisma.claim.findMany({
-      where: {
-        OR: [
-          {
-            isSuspicious: true,
-          },
-          {
-            reviewedByAdminId: {
-              not: null,
+    const [suspiciousClaims, suspiciousQueryStates] = await Promise.all([
+      this.prisma.claim.findMany({
+        where: {
+          OR: [
+            {
+              isSuspicious: true,
             },
-            riskScore: {
-              gte: 0.7,
+            {
+              reviewedByAdminId: {
+                not: null,
+              },
+              riskScore: {
+                gte: 0.7,
+              },
             },
-          },
-        ],
-        createdAt: {
-          gte: since,
-        },
-      },
-      select: {
-        id: true,
-        riskScore: true,
-        policy: {
-          select: {
-            serviceZone: true,
+          ],
+          createdAt: {
+            gte: since,
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 200,
-    });
+        select: {
+          id: true,
+          riskScore: true,
+          policy: {
+            select: {
+              serviceZone: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 200,
+      }),
+      this.prisma.riderAppState.findMany({
+        where: {
+          flagEvents: {
+            some: {
+              reason: SUSPICIOUS_QUERY_RAISED_REASON,
+              detectedAt: {
+                gte: since,
+              },
+            },
+          },
+        },
+        select: {
+          user: {
+            select: {
+              profile: {
+                select: {
+                  serviceZone: true,
+                },
+              },
+            },
+          },
+          flagEvents: {
+            where: {
+              reason: SUSPICIOUS_QUERY_RAISED_REASON,
+              detectedAt: {
+                gte: since,
+              },
+            },
+            orderBy: {
+              detectedAt: 'desc',
+            },
+          },
+        },
+        take: 200,
+      }),
+    ]);
 
-    const groupedByZone = new Map<string, { claims: number; riskTotal: number }>();
+    const groupedByZone = new Map<string, {
+      claims: number;
+      riskTotal: number;
+      raisedQueries: number;
+      lastRaisedQueryAt: Date | null;
+    }>();
 
     suspiciousClaims.forEach((claim) => {
       const zone = claim.policy.serviceZone?.trim() || 'unassigned-zone';
-      const current = groupedByZone.get(zone) ?? { claims: 0, riskTotal: 0 };
+      const current = groupedByZone.get(zone) ?? {
+        claims: 0,
+        riskTotal: 0,
+        raisedQueries: 0,
+        lastRaisedQueryAt: null,
+      };
       current.claims += 1;
       current.riskTotal += claim.riskScore;
       groupedByZone.set(zone, current);
     });
 
+    suspiciousQueryStates.forEach((appState) => {
+      const zone = appState.user.profile?.serviceZone?.trim() || 'unassigned-zone';
+      const current = groupedByZone.get(zone) ?? {
+        claims: 0,
+        riskTotal: 0,
+        raisedQueries: 0,
+        lastRaisedQueryAt: null,
+      };
+
+      current.raisedQueries += appState.flagEvents.length;
+      const latestQueryAt = appState.flagEvents[0]?.detectedAt ?? null;
+      if (!current.lastRaisedQueryAt || (latestQueryAt && latestQueryAt > current.lastRaisedQueryAt)) {
+        current.lastRaisedQueryAt = latestQueryAt;
+      }
+
+      groupedByZone.set(zone, current);
+    });
+
     return Array.from(groupedByZone.entries())
       .map(([location, value], index) => {
-        const averageRiskScore = value.riskTotal / value.claims;
+        const averageRiskScore = value.claims > 0
+          ? value.riskTotal / value.claims
+          : Math.min(0.95, 0.7 + value.raisedQueries * 0.05);
 
         return {
           id: `CLUSTER-${String(index + 1).padStart(3, '0')}`,
@@ -269,9 +339,14 @@ export class AdminDashboardService {
           riskScore: Number(averageRiskScore.toFixed(2)),
           status:
             averageRiskScore >= 0.9 ? 'CRITICAL' : averageRiskScore >= 0.8 ? 'HIGH' : 'MEDIUM',
+          raisedQueries: value.raisedQueries,
+          lastRaisedQueryAt: value.lastRaisedQueryAt?.toISOString() ?? null,
         } as DashboardCluster;
       })
-      .sort((left, right) => right.riskScore - left.riskScore || right.claims - left.claims)
+      .sort((left, right) =>
+        right.riskScore - left.riskScore
+        || right.raisedQueries - left.raisedQueries
+        || right.claims - left.claims)
       .slice(0, 3);
   }
 

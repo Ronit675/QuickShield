@@ -1,8 +1,18 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import type { LocationIntegrityState, LocationIntegrityReason } from '../hooks/useLocationIntegrityMonitor';
+import { raiseSuspiciousQuery } from '../services/app-state.service';
 
 type FlagsScreenProps = {
   isActive?: boolean;
@@ -24,6 +34,11 @@ const formatReason = (reason: LocationIntegrityReason) => {
       return {
         text: 'Suspicious outside-area case during heavy rain and working hours (claims held 60 mins)',
         icon: 'shield' as const,
+      };
+    case 'suspicious_query_raised':
+      return {
+        text: 'Rider query raised for suspicious-case review',
+        icon: 'chatbubble-ellipses' as const,
       };
     case 'invigilating_location_fluctuation':
       return { text: 'Invigilating: repeated location fluctuations in checks', icon: 'eye' as const };
@@ -77,8 +92,53 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
   const isRedFlag = flagLevel === 'red';
   const isGreenFlag = flagLevel === 'green';
   const checksLeft = Math.max(0, 5 - locationIntegrity.consecutiveInnerRadiusPoints);
+  const [isSubmittingSuspiciousQuery, setIsSubmittingSuspiciousQuery] = useState(false);
+  const [hasRaisedSuspiciousQueryLocally, setHasRaisedSuspiciousQueryLocally] = useState(false);
   // Sort history by most recent first
   const sortedHistory = [...locationIntegrity.history].reverse();
+  const hasActiveSuspiciousCase = Boolean(
+    locationIntegrity.lastSuspiciousDetectedAt
+    && locationIntegrity.suspiciousHoldUntilMs
+    && Date.now() < locationIntegrity.suspiciousHoldUntilMs,
+  );
+  const hasRaisedSuspiciousQueryForCurrentCase = useMemo(() => {
+    if (!locationIntegrity.lastSuspiciousDetectedAt) {
+      return false;
+    }
+
+    return locationIntegrity.history.some((entry) =>
+      entry.reason === 'suspicious_query_raised'
+      && entry.detectedAt >= locationIntegrity.lastSuspiciousDetectedAt!,
+    );
+  }, [locationIntegrity.history, locationIntegrity.lastSuspiciousDetectedAt]);
+  const canRaiseSuspiciousQuery = hasActiveSuspiciousCase
+    && !hasRaisedSuspiciousQueryForCurrentCase
+    && !hasRaisedSuspiciousQueryLocally;
+
+  useEffect(() => {
+    setHasRaisedSuspiciousQueryLocally(false);
+  }, [locationIntegrity.lastSuspiciousDetectedAt]);
+
+  const handleRaiseSuspiciousQuery = async () => {
+    if (!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery) {
+      return;
+    }
+
+    setIsSubmittingSuspiciousQuery(true);
+
+    try {
+      await raiseSuspiciousQuery();
+      setHasRaisedSuspiciousQueryLocally(true);
+      Alert.alert('Query raised', 'Your suspicious-case query has been sent to the admin dashboard.');
+    } catch (error: any) {
+      Alert.alert(
+        'Could not raise query',
+        error?.response?.data?.message || error?.message || 'Please try again.',
+      );
+    } finally {
+      setIsSubmittingSuspiciousQuery(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -152,6 +212,35 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
 
           <Text style={styles.summary}>{locationIntegrity.statusText}</Text>
           <Text style={styles.meta}>Last checked: {formatDetectionTime(locationIntegrity.lastCheckedAt ?? Date.now())}</Text>
+          {hasActiveSuspiciousCase && (
+            <View style={styles.queryCard}>
+              <Text style={styles.queryTitle}>Suspicious case review</Text>
+              <Text style={styles.querySubtitle}>
+                Raise a query to make this case visible in the admin suspicious clusters dashboard.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.queryButton,
+                  (!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery) && styles.queryButtonDisabled,
+                ]}
+                activeOpacity={0.88}
+                onPress={() => {
+                  void handleRaiseSuspiciousQuery();
+                }}
+                disabled={!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery}
+              >
+                {isSubmittingSuspiciousQuery ? (
+                  <ActivityIndicator color="#08110F" />
+                ) : (
+                  <Text style={styles.queryButtonText}>
+                    {hasRaisedSuspiciousQueryForCurrentCase || hasRaisedSuspiciousQueryLocally
+                      ? 'Query Raised'
+                      : 'Raise Query'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.historySection}>
@@ -324,6 +413,42 @@ const styles = StyleSheet.create({
   meta: {
     color: '#7A8597',
     fontSize: 12,
+  },
+  queryCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2E4B44',
+    backgroundColor: '#10231E',
+    gap: 10,
+  },
+  queryTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  querySubtitle: {
+    color: '#A7C1B5',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  queryButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 12,
+    backgroundColor: '#00E5A0',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    minWidth: 126,
+    alignItems: 'center',
+  },
+  queryButtonDisabled: {
+    opacity: 0.55,
+  },
+  queryButtonText: {
+    color: '#08110F',
+    fontSize: 13,
+    fontWeight: '800',
   },
   historySection: {
     marginBottom: 20,

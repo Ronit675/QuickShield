@@ -220,6 +220,8 @@ export default function Dashboard() {
                 claims={cluster.claims}
                 riskScore={cluster.riskScore}
                 status={cluster.status}
+                raisedQueries={cluster.raisedQueries}
+                lastRaisedQueryAt={cluster.lastRaisedQueryAt}
               />
             ))
           ) : (
@@ -282,7 +284,15 @@ function RiskBar({ zone, percentage, claims }: DashboardRiskZone) {
   );
 }
 
-function ClusterItem({ id, location, claims, riskScore, status }: DashboardCluster) {
+function ClusterItem({
+  id,
+  location,
+  claims,
+  riskScore,
+  status,
+  raisedQueries,
+  lastRaisedQueryAt,
+}: DashboardCluster) {
   return (
     <div className="cluster-card">
       <div className="cluster-top">
@@ -293,6 +303,12 @@ function ClusterItem({ id, location, claims, riskScore, status }: DashboardClust
       <div className="cluster-meta">
         <span>{claims} claims</span>
         <span>Risk {Math.round(riskScore * 100)}%</span>
+      </div>
+      <div className="cluster-meta cluster-query-meta">
+        <span>{raisedQueries} rider quer{raisedQueries === 1 ? 'y' : 'ies'}</span>
+        <span>
+          {lastRaisedQueryAt ? `Latest ${formatRelativeTime(lastRaisedQueryAt)}` : 'No rider query raised'}
+        </span>
       </div>
     </div>
   );

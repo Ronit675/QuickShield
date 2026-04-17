@@ -61,6 +61,8 @@ const OTP_LENGTH = 6;
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_RESEND_INTERVAL_MS = 30 * 1000;
 const MAX_FAILED_OTP_ATTEMPTS = 5;
+const SUSPICIOUS_REASON = 'suspicious_outside_working_area';
+const SUSPICIOUS_QUERY_RAISED_REASON = 'suspicious_query_raised';
 
 @Injectable()
 export class AuthService {
@@ -272,6 +274,52 @@ export class AuthService {
           detectedAt: new Date(entry.detectedAt),
         })),
         skipDuplicates: true,
+      });
+    }
+
+    return this.getAppState(userId);
+  }
+
+  async raiseSuspiciousQuery(userId: string): Promise<AppStateResponse> {
+    const appState = await this.prisma.riderAppState.upsert({
+      where: { userId },
+      create: {
+        userId,
+        currentStatusText: 'GPS check inactive',
+      },
+      update: {},
+      include: {
+        flagEvents: {
+          where: {
+            reason: {
+              in: [SUSPICIOUS_REASON, SUSPICIOUS_QUERY_RAISED_REASON],
+            },
+          },
+          orderBy: { detectedAt: 'asc' },
+        },
+      },
+    });
+
+    const latestSuspiciousEvent = [...appState.flagEvents]
+      .reverse()
+      .find((entry) => entry.reason === SUSPICIOUS_REASON);
+    const isCurrentlySuspicious = appState.currentReasons.includes(SUSPICIOUS_REASON);
+
+    if (!latestSuspiciousEvent || !isCurrentlySuspicious) {
+      throw new BadRequestException('No active suspicious case is available to query.');
+    }
+
+    const hasRaisedQueryForCurrentCase = appState.flagEvents.some((entry) =>
+      entry.reason === SUSPICIOUS_QUERY_RAISED_REASON
+      && entry.detectedAt.getTime() >= latestSuspiciousEvent.detectedAt.getTime());
+
+    if (!hasRaisedQueryForCurrentCase) {
+      await this.prisma.flagEvent.create({
+        data: {
+          appStateId: appState.id,
+          reason: SUSPICIOUS_QUERY_RAISED_REASON,
+          detectedAt: new Date(),
+        },
       });
     }
 

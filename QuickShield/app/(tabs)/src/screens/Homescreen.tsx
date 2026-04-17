@@ -118,6 +118,12 @@ const endOfDay = (date: Date) => {
   return next;
 };
 
+const RED_FLAG_PAUSE_LABELS = new Set([
+  'Suspicious movement hold (60 mins)',
+  'Invigilating fluctuation hold (30 mins)',
+  'Account suspended (60 mins)',
+]);
+
 type AnimatedAutoRenewSwitchProps = {
   value: boolean;
   onValueChange: (nextValue: boolean) => void;
@@ -239,7 +245,16 @@ export default function HomeScreen({
   const [showTodayTimePicker, setShowTodayTimePicker] = useState(false);
   const [pendingTodayReturnDate, setPendingTodayReturnDate] = useState<Date | null>(null);
   const [isCheckingImBack, setIsCheckingImBack] = useState(false);
+  const [isRaisingQuery, setIsRaisingQuery] = useState(false);
+  const [hasRaisedQuery, setHasRaisedQuery] = useState(false);
   const hasAskedCurrentFlagRef = useRef(false);
+  const isRedFlagPause = locationIntegrity.flagLevel === 'red'
+    || (selectedReturnDateLabel ? RED_FLAG_PAUSE_LABELS.has(selectedReturnDateLabel) : false);
+  const pausedClaimsMessage = selectedReturnDateLabel
+    ? `Feature disabled until ${selectedReturnDateLabel}.${isRedFlagPause ? '' : ' Tap I\'m Back after returning to your working area.'}`
+    : isRedFlagPause
+      ? 'Claims feature is temporarily disabled due to a red flag review.'
+      : "Claims feature is temporarily disabled. Tap I'm Back after returning to your working area.";
 
   useEffect(() => {
     onFlagQnaPendingChange?.(showFlagQna);
@@ -277,6 +292,19 @@ export default function HomeScreen({
     await fetchPolicy();
   }, [fetchPolicy]);
 
+  const handleRaiseQuery = useCallback(async () => {
+    setIsRaisingQuery(true);
+    try {
+      await api.post('/auth/app-state/suspicious-query');
+      setHasRaisedQuery(true);
+      Alert.alert('Success', 'Your query has been raised and submitted to our support team.');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to raise query. Please try again.');
+    } finally {
+      setIsRaisingQuery(false);
+    }
+  }, []);
+
   const claims = policy?.claims ?? [];
 
   const daysLeft = policy
@@ -302,11 +330,7 @@ export default function HomeScreen({
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
       setMiniTrackedStartMs(null);
-      setMiniWeatherSummary(
-        outOfTownUntilDate
-          ? `Claims disabled until ${formatDateOptionLabel(outOfTownUntilDate)} ${formatTimeLabel(outOfTownUntilDate)}. Tap I'm Back after returning to your working area.`
-          : "Claims feature is temporarily disabled. Tap I'm Back after returning to your working area.",
-      );
+      setMiniWeatherSummary(pausedClaimsMessage);
       return;
     }
 
@@ -322,7 +346,7 @@ export default function HomeScreen({
     setMiniWeatherSummary(trackingState.weatherSummary);
     setMiniIsTracking(trackingState.isTracking);
     setMiniTrackedStartMs(trackingState.trackedStartMs);
-  }, [isClaimsFeatureDisabled, needsPlatformConnectForMiniTimer, outOfTownUntilDate, t, user]);
+  }, [isClaimsFeatureDisabled, needsPlatformConnectForMiniTimer, pausedClaimsMessage, t, user]);
 
   useEffect(() => {
     if (!isActive || isPremiumTab) {
@@ -883,22 +907,47 @@ export default function HomeScreen({
             <Text style={styles.imBackSubtitle}>
               {selectedReturnDateLabel
                 ? `Feature disabled until ${selectedReturnDateLabel}.`
-                : 'Feature disabled for your selected out-of-town period.'}
+                : isRedFlagPause
+                  ? 'Feature disabled due to a red flag review.'
+                  : 'Feature disabled for your selected out-of-town period.'}
             </Text>
-            <TouchableOpacity
-              style={[styles.imBackButton, isCheckingImBack && styles.imBackButtonDisabled]}
-              activeOpacity={0.88}
-              onPress={() => {
-                void handleImBack();
-              }}
-              disabled={isCheckingImBack}
-            >
-              {isCheckingImBack ? (
-                <ActivityIndicator color="#1B1304" />
-              ) : (
-                <Text style={styles.imBackButtonText}>I&apos;m Back</Text>
+            <View style={styles.imBackButtonRow}>
+              {!isRedFlagPause && (
+                <TouchableOpacity
+                  style={[styles.imBackButton, isCheckingImBack && styles.imBackButtonDisabled]}
+                  activeOpacity={0.88}
+                  onPress={() => {
+                    void handleImBack();
+                  }}
+                  disabled={isCheckingImBack}
+                >
+                  {isCheckingImBack ? (
+                    <ActivityIndicator color="#1B1304" />
+                  ) : (
+                    <Text style={styles.imBackButtonText}>I&apos;m Back</Text>
+                  )}
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.raiseQueryButton, hasRaisedQuery && styles.raiseQueryButtonRaised]}
+                activeOpacity={0.88}
+                onPress={() => {
+                  void handleRaiseQuery();
+                }}
+                disabled={isRaisingQuery || hasRaisedQuery}
+              >
+                {isRaisingQuery ? (
+                  <ActivityIndicator color={hasRaisedQuery ? '#00E5A0' : '#F6E7B6'} />
+                ) : hasRaisedQuery ? (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color="#00E5A0" style={{ marginRight: 4 }} />
+                    <Text style={styles.raiseQueryButtonRaisedText}>Query Raised</Text>
+                  </>
+                ) : (
+                  <Text style={styles.raiseQueryButtonText}>Raise Query</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -1334,7 +1383,13 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginBottom: 10,
   },
+  imBackButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
   imBackButton: {
+    flex: 1,
     minHeight: 38,
     borderRadius: 10,
     backgroundColor: '#FDE68A',
@@ -1348,6 +1403,30 @@ const styles = StyleSheet.create({
   },
   imBackButtonText: {
     color: '#1B1304',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  raiseQueryButton: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#F6E7B6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  raiseQueryButtonRaised: {
+    backgroundColor: 'rgba(0, 229, 160, 0.1)',
+    borderColor: '#00E5A0',
+  },
+  raiseQueryButtonText: {
+    color: '#F6E7B6',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  raiseQueryButtonRaisedText: {
+    color: '#00E5A0',
     fontSize: 14,
     fontWeight: '800',
   },

@@ -43,4 +43,10 @@ export class AuthController {
   updateAppState(@Request() req: any, @Body() body: any) {
     return this.authService.updateAppState(req.user.userId, body);
   }
+
+  @Post('app-state/suspicious-query')
+  @UseGuards(JwtAuthGuard)
+  raiseSuspiciousQuery(@Request() req: any) {
+    return this.authService.raiseSuspiciousQuery(req.user.userId);
+  }
 }

@@ -53,6 +53,49 @@ Based on the repository contents, the prototype currently includes:
 - admin-facing endpoints and frontend pages for dashboard, claims, fraud alerts, payouts, zones, pricing risk, and settings
 - ML model training and inference for the three pricing components `F`, `Z`, and `A`
 
+## Dependencies Used
+
+This project is a monorepo with service-specific dependency stacks.
+
+### Rider App (`QuickShield/`)
+
+- `expo`, `react`, `react-native`, `expo-router` for mobile app runtime and navigation
+- `axios` for API communication
+- `@react-native-async-storage/async-storage` for local persistence
+- `@react-native-google-signin/google-signin` and `expo-auth-session` for authentication flows
+- `react-native-chart-kit`, `react-native-svg`, and `victory-native` for charts and visualizations
+- `@expo/vector-icons` for iconography
+
+### Admin Portal (`admin-portal/`)
+
+- `react`, `react-dom` for UI rendering
+- `vite` and `@vitejs/plugin-react` for development/build tooling
+- `typescript` for static typing
+- `axios` for backend API requests
+
+### Backend API (`Backend/`)
+
+- `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express` as the backend framework
+- `@prisma/client` and `prisma` for ORM and schema migrations
+- `passport`, `@nestjs/passport`, `passport-jwt`, and `jsonwebtoken` for JWT auth guards/strategies
+- `google-auth-library` for Google token verification/sign-in integration
+- `class-validator` and `class-transformer` for DTO validation and transformation
+- `rxjs` for NestJS reactive primitives
+
+### ML Service (`ml-service/`)
+
+- `fastapi` and `uvicorn` for model-serving APIs
+- `scikit-learn` for model training and inference
+- `pandas` and `numpy` for feature/data processing
+- `joblib` for model serialization/loading
+- `pydantic` for request/response schema validation
+
+### Dev Tooling (Across Services)
+
+- `eslint` and `@typescript-eslint/*` for linting
+- `typescript` for type-checking in TS-based services
+- `prisma` CLI for database codegen and migrations
+
 ## Known Prototype Limitations
 
 This is still a prototype and some flows remain partially mocked or simplified:

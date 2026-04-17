@@ -132,3 +132,53 @@ export const syncPersistedAppState = async (
   const response = await api.put('/auth/app-state', payload);
   return normalizeAppState(response.data);
 };
+
+export const raiseSuspiciousQuery = async (): Promise<PersistedAppState> => {
+  try {
+    const response = await api.post('/auth/app-state/suspicious-query');
+    return normalizeAppState(response.data);
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const responseData = error?.response?.data;
+    const message = typeof responseData === 'string'
+      ? responseData
+      : typeof responseData?.message === 'string'
+        ? responseData.message
+        : '';
+    const looksLikeMissingPostRoute = status === 404 || status === 405 || /Cannot POST/i.test(message);
+
+    if (!looksLikeMissingPostRoute) {
+      throw error;
+    }
+
+    const currentState = await fetchPersistedAppState();
+    const latestSuspiciousEvent = [...currentState.history]
+      .reverse()
+      .find((entry) => entry.reason === 'suspicious_outside_working_area');
+
+    if (!latestSuspiciousEvent || !currentState.currentReasons.includes('suspicious_outside_working_area')) {
+      throw error;
+    }
+
+    const now = Date.now();
+    const hasExistingQueryEvent = currentState.history.some((entry) =>
+      entry.reason === 'suspicious_query_raised'
+      && entry.detectedAt >= latestSuspiciousEvent.detectedAt,
+    );
+
+    if (hasExistingQueryEvent) {
+      return currentState;
+    }
+
+    return syncPersistedAppState({
+      ...currentState,
+      history: [
+        ...currentState.history,
+        {
+          reason: 'suspicious_query_raised',
+          detectedAt: now,
+        },
+      ],
+    });
+  }
+};
