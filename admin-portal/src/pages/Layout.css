@@ -1,0 +1,146 @@
+.admin-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.sidebar {
+  background: rgba(6, 14, 27, 0.92);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px 16px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 20px;
+}
+
+.sidebar.expanded {
+  width: 280px;
+}
+
+.sidebar.collapsed {
+  width: 88px;
+}
+
+.sidebar-top,
+.brand-lockup,
+.admin-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-lockup strong,
+.admin-summary strong {
+  display: block;
+}
+
+.brand-lockup span,
+.admin-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+
+.nav-item.active {
+  background: var(--primary-soft);
+  color: var(--text);
+  border-color: rgba(61, 217, 177, 0.2);
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar-logout {
+  width: 100%;
+}
+
+.avatar-badge {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-main {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.control-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 24px 28px;
+  backdrop-filter: blur(16px);
+  background: rgba(7, 17, 31, 0.82);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+}
+
+.control-header h1 {
+  margin: 0;
+}
+
+.control-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.control-filters select,
+.control-filters input {
+  min-width: 160px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 11px 14px;
+}
+
+.page-shell {
+  padding: 28px;
+}
+
+@media (max-width: 960px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    grid-template-rows: auto auto auto;
+  }
+
+  .control-header {
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -19,7 +19,16 @@ const formatReason = (reason: LocationIntegrityReason) => {
     case 'unnatural_velocity_curve':
       return { text: 'Unnatural velocity pattern', icon: 'trending-up' as const };
     case 'outside_working_area':
-      return { text: 'Outside 25 km working area', icon: 'warning' as const };
+      return { text: 'Outside 10 km working area', icon: 'warning' as const };
+    case 'suspicious_outside_working_area':
+      return {
+        text: 'Suspicious outside-area case during heavy rain and working hours (claims held 60 mins)',
+        icon: 'shield' as const,
+      };
+    case 'invigilating_location_fluctuation':
+      return { text: 'Invigilating: repeated location fluctuations in checks', icon: 'eye' as const };
+    case 'account_suspended_location_pattern':
+      return { text: 'Account suspended 60 mins (location-change pattern)', icon: 'ban' as const };
     case 'permission_denied':
       return { text: 'Location access denied', icon: 'lock-closed' as const };
     case 'gps_unavailable':
@@ -177,7 +186,7 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
             <View style={styles.emptyState}>
               <Ionicons name="shield-checkmark-outline" size={32} color="#86EFAC" />
               <Text style={styles.emptyText}>No working-area breaches detected yet.</Text>
-              <Text style={styles.emptySubtext}>Rider is inside the 25 km working area.</Text>
+              <Text style={styles.emptySubtext}>Rider is inside the 10 km working area.</Text>
             </View>
           )}
         </View>

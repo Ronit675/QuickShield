@@ -1,0 +1,88 @@
+.payouts-page,
+.payouts-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.payouts-toolbar {
+  display: flex;
+  gap: 12px;
+}
+
+.payouts-toolbar select {
+  min-width: 180px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 11px 14px;
+}
+
+.payouts-grid {
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+}
+
+.payouts-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.payout-row {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+}
+
+.payout-row.selected {
+  border-color: rgba(61, 217, 177, 0.28);
+  background: rgba(61, 217, 177, 0.09);
+}
+
+.payout-row p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.payout-status.pending {
+  color: #ffe3b0;
+}
+
+.payout-status.approved,
+.payout-status.processing {
+  color: #d6fff3;
+}
+
+.payout-status.completed {
+  color: #c8ffe5;
+}
+
+.payout-status.failed,
+.payout-status.cancelled {
+  color: #ffd4cf;
+}
+
+.payout-detail,
+.detail-section {
+  display: grid;
+  gap: 16px;
+}
+
+.payout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 1080px) {
+  .payouts-grid {
+    grid-template-columns: 1fr;
+  }
+}

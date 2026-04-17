@@ -1,0 +1,152 @@
+.dashboard-page,
+.dashboard-columns,
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.stat-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(19, 42, 76, 0.98), rgba(14, 31, 58, 0.98));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 8px;
+}
+
+.stat-card.primary {
+  border-color: rgba(61, 217, 177, 0.24);
+}
+
+.stat-card.danger {
+  border-color: rgba(255, 109, 95, 0.28);
+}
+
+.stat-label,
+.stat-trend,
+.risk-labels span,
+.cluster-meta,
+.activity-item p {
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 30px;
+}
+
+.dashboard-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.risk-row {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.risk-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.risk-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.risk-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #9ff8de);
+}
+
+.risk-score {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.cluster-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  margin-bottom: 12px;
+}
+
+.cluster-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cluster-card p {
+  margin: 0;
+}
+
+.cluster-meta,
+.activity-list {
+  display: grid;
+  gap: 10px;
+}
+
+.card-chip.live {
+  color: var(--primary);
+  border-color: rgba(61, 217, 177, 0.35);
+  box-shadow: 0 0 0 1px rgba(61, 217, 177, 0.08);
+}
+
+.activity-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.activity-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: var(--warning);
+}
+
+.activity-dot.critical {
+  background: var(--danger);
+}
+
+.activity-dot.high {
+  background: var(--warning);
+}
+
+.activity-dot.low {
+  background: var(--primary);
+}
+
+.activity-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.activity-item p {
+  margin: 0;
+}
+
+@media (max-width: 1080px) {
+  .dashboard-columns,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}

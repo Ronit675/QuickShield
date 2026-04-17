@@ -51,6 +51,8 @@ type HomeScreenProps = {
   outOfTownUntilDate: Date | null;
   setOutOfTownUntilDate: React.Dispatch<React.SetStateAction<Date | null>>;
   onImBackRecovered?: () => void;
+  onYellowFlagNoOutOfTown?: () => void;
+  onFlagQnaPendingChange?: (isPending: boolean) => void;
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -98,9 +100,21 @@ const formatDateOptionLabel = (date: Date) => date.toLocaleDateString('en-GB', {
   month: '2-digit',
 });
 
+const formatTimeLabel = (date: Date) => date.toLocaleTimeString('en-IN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true,
+});
+
 const startOfDay = (date: Date) => {
   const next = new Date(date);
   next.setHours(0, 0, 0, 0);
+  return next;
+};
+
+const endOfDay = (date: Date) => {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
   return next;
 };
 
@@ -201,6 +215,8 @@ export default function HomeScreen({
   outOfTownUntilDate,
   setOutOfTownUntilDate,
   onImBackRecovered,
+  onYellowFlagNoOutOfTown,
+  onFlagQnaPendingChange,
 }: HomeScreenProps) {
   const { user, setUser } = useAuth();
   const { t } = useLanguage();
@@ -220,8 +236,14 @@ export default function HomeScreen({
   const [flagQnaAnswer, setFlagQnaAnswer] = useState<'yes' | 'no' | null>(null);
   const [flagQnaStep, setFlagQnaStep] = useState<'q1' | 'return_date'>('q1');
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [showTodayTimePicker, setShowTodayTimePicker] = useState(false);
+  const [pendingTodayReturnDate, setPendingTodayReturnDate] = useState<Date | null>(null);
   const [isCheckingImBack, setIsCheckingImBack] = useState(false);
   const hasAskedCurrentFlagRef = useRef(false);
+
+  useEffect(() => {
+    onFlagQnaPendingChange?.(showFlagQna);
+  }, [onFlagQnaPendingChange, showFlagQna]);
 
   const fetchPolicy = useCallback(async () => {
     try {
@@ -282,7 +304,7 @@ export default function HomeScreen({
       setMiniTrackedStartMs(null);
       setMiniWeatherSummary(
         outOfTownUntilDate
-          ? `Claims disabled until ${formatDateOptionLabel(outOfTownUntilDate)}. Tap I'm Back after returning to your working area.`
+          ? `Claims disabled until ${formatDateOptionLabel(outOfTownUntilDate)} ${formatTimeLabel(outOfTownUntilDate)}. Tap I'm Back after returning to your working area.`
           : "Claims feature is temporarily disabled. Tap I'm Back after returning to your working area.",
       );
       return;
@@ -361,10 +383,9 @@ export default function HomeScreen({
       return;
     }
 
-    const endOfSelectedDay = new Date(outOfTownUntilDate);
-    endOfSelectedDay.setHours(23, 59, 59, 999);
+    const holdUntil = outOfTownUntilDate.getTime();
 
-    if (Date.now() > endOfSelectedDay.getTime()) {
+    if (Date.now() > holdUntil) {
       setIsClaimsFeatureDisabled(false);
       setOutOfTownSinceMs(null);
       setOutOfTownUntilDate(null);
@@ -373,7 +394,7 @@ export default function HomeScreen({
     }
 
     const unlockInterval = setInterval(() => {
-      if (Date.now() > endOfSelectedDay.getTime()) {
+      if (Date.now() > holdUntil) {
         setIsClaimsFeatureDisabled(false);
         setOutOfTownSinceMs(null);
         setOutOfTownUntilDate(null);
@@ -410,6 +431,8 @@ export default function HomeScreen({
       setFlagQnaAnswer(null);
       setFlagQnaStep('q1');
       setShowCustomDatePicker(false);
+      setShowTodayTimePicker(false);
+      setPendingTodayReturnDate(null);
       return;
     }
 
@@ -420,8 +443,15 @@ export default function HomeScreen({
         setFlagQnaStep('q1');
         setSelectedReturnDateLabel(null);
         setShowCustomDatePicker(false);
+        setShowTodayTimePicker(false);
+        setPendingTodayReturnDate(null);
         setShowFlagQna(true);
       }
+      return;
+    }
+
+    // Keep QnA open until answered; do not auto-dismiss on transient flag changes.
+    if (showFlagQna) {
       return;
     }
 
@@ -431,11 +461,14 @@ export default function HomeScreen({
     setFlagQnaStep('q1');
     setSelectedReturnDateLabel(null);
     setShowCustomDatePicker(false);
+    setShowTodayTimePicker(false);
+    setPendingTodayReturnDate(null);
   }, [
     isActive,
     isPremiumTab,
     isClaimsFeatureDisabled,
     locationIntegrity.flagLevel,
+    showFlagQna,
     setSelectedReturnDateLabel,
   ]);
 
@@ -469,7 +502,7 @@ export default function HomeScreen({
     },
   ];
 
-  const handleReturnDateSelect = (label: string, selectedDate?: Date) => {
+  const applyReturnFreeze = (label: string, freezeUntil: Date, freezeAtExactTime = false) => {
     const matchingOption = returnDateOptions.find((option) => {
       const optionLabel = option.dateLabel
         ? `${option.label} (${option.dateLabel})`
@@ -479,12 +512,37 @@ export default function HomeScreen({
 
     setSelectedReturnDateLabel(label);
     setOutOfTownSinceMs((currentValue) => currentValue ?? Date.now());
-    setOutOfTownUntilDate(selectedDate ?? (matchingOption ? new Date(matchingOption.date) : null));
+    setOutOfTownUntilDate(
+      freezeAtExactTime || matchingOption?.key === 'today' ? freezeUntil : endOfDay(freezeUntil),
+    );
     setIsClaimsFeatureDisabled(true);
     setMiniIsTracking(false);
     setMiniTrackedStartMs(null);
     void clearStoredRainDisruptionTimer(getRainDisruptionStorageKey(user?.id));
     setShowFlagQna(false);
+    setShowTodayTimePicker(false);
+    setPendingTodayReturnDate(null);
+  };
+
+  const handleReturnDateSelect = (label: string, selectedDate?: Date) => {
+    const matchingOption = returnDateOptions.find((option) => {
+      const optionLabel = option.dateLabel
+        ? `${option.label} (${option.dateLabel})`
+        : option.label;
+      return optionLabel === label;
+    });
+    const chosenDate = selectedDate ?? (matchingOption ? new Date(matchingOption.date) : null);
+    if (!chosenDate) {
+      return;
+    }
+
+    if (matchingOption?.key === 'today') {
+      setPendingTodayReturnDate(chosenDate);
+      setShowTodayTimePicker(true);
+      return;
+    }
+
+    applyReturnFreeze(label, chosenDate);
   };
 
   const handleCustomDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -496,6 +554,27 @@ export default function HomeScreen({
     const normalized = startOfDay(selectedDate);
     const label = formatDateOptionLabel(normalized);
     handleReturnDateSelect(label, normalized);
+  };
+
+  const handleTodayTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
+    setShowTodayTimePicker(false);
+    if (event.type === 'dismissed' || !selectedTime || !pendingTodayReturnDate) {
+      setPendingTodayReturnDate(null);
+      return;
+    }
+
+    const freezeUntil = new Date(pendingTodayReturnDate);
+    freezeUntil.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+
+    if (freezeUntil.getTime() <= Date.now()) {
+      Alert.alert('Invalid return time', 'Please choose a time later than the current time.');
+      setPendingTodayReturnDate(pendingTodayReturnDate);
+      setShowTodayTimePicker(true);
+      return;
+    }
+
+    const todayLabel = `Today (${formatDateOptionLabel(pendingTodayReturnDate)}) at ${formatTimeLabel(freezeUntil)}`;
+    applyReturnFreeze(todayLabel, freezeUntil, true);
   };
 
   const handleImBack = useCallback(async () => {
@@ -1109,6 +1188,9 @@ export default function HomeScreen({
                         setOutOfTownUntilDate(null);
                         setSelectedReturnDateLabel(null);
                         setShowFlagQna(false);
+                        setShowTodayTimePicker(false);
+                        setPendingTodayReturnDate(null);
+                        onYellowFlagNoOutOfTown?.();
                       }}
                     >
                       <Text style={[styles.qnaOptionText, flagQnaAnswer === 'no' && styles.qnaOptionTextActive]}>No</Text>
@@ -1158,6 +1240,14 @@ export default function HomeScreen({
                 display="default"
                 minimumDate={baseDay}
                 onChange={handleCustomDateChange}
+              />
+            )}
+            {showTodayTimePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display="default"
+                onChange={handleTodayTimeChange}
               />
             )}
           </BlurView>

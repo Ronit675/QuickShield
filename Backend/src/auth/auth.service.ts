@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -9,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { OAuth2Client } from 'google-auth-library';
 import { buildAuthUser } from './auth-user.util';
+import { buildAdminUser } from './admin-user.util';
 import { getRequiredEnv } from '../config/env';
 
 type OtpSession = {
@@ -63,6 +65,7 @@ const MAX_FAILED_OTP_ATTEMPTS = 5;
 @Injectable()
 export class AuthService {
   private readonly otpStore = new Map<string, OtpSession>();
+  private readonly adminOtpStore = new Map<string, OtpSession>();
 
   constructor(
     private prisma: PrismaService,
@@ -110,63 +113,11 @@ export class AuthService {
   }
 
   async sendPhoneOtp(rawPhone: string) {
-    const phone = this.normalizePhoneNumber(rawPhone);
-    const existingSession = this.otpStore.get(phone);
-    const now = Date.now();
-
-    if (existingSession && now - existingSession.lastSentAt < OTP_RESEND_INTERVAL_MS) {
-      throw new HttpException(
-        'Please wait before requesting another OTP',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-
-    const otp = this.generateOtp();
-    this.otpStore.set(phone, {
-      otp,
-      expiresAt: now + OTP_TTL_MS,
-      lastSentAt: now,
-      failedAttempts: 0,
-    });
-
-    return {
-      success: true,
-      phone,
-      expiresInSeconds: OTP_TTL_MS / 1000,
-      debugOtp: process.env.NODE_ENV === 'production' ? undefined : otp,
-      delivery: process.env.NODE_ENV === 'production' ? 'pending_sms_setup' : 'debug',
-    };
+    return this.issueOtp(this.otpStore, rawPhone);
   }
 
   async verifyPhoneOtp(rawPhone: string, rawOtp: string) {
-    const phone = this.normalizePhoneNumber(rawPhone);
-    const otp = rawOtp.trim();
-    const session = this.otpStore.get(phone);
-
-    if (!session) {
-      throw new UnauthorizedException('Request an OTP before verifying');
-    }
-
-    if (Date.now() > session.expiresAt) {
-      this.otpStore.delete(phone);
-      throw new UnauthorizedException('OTP expired. Please request a new one');
-    }
-
-    if (!/^\d{6}$/.test(otp)) {
-      throw new BadRequestException('OTP must be a 6-digit code');
-    }
-
-    if (session.otp !== otp) {
-      session.failedAttempts += 1;
-      if (session.failedAttempts >= MAX_FAILED_OTP_ATTEMPTS) {
-        this.otpStore.delete(phone);
-      } else {
-        this.otpStore.set(phone, session);
-      }
-      throw new UnauthorizedException('Invalid OTP');
-    }
-
-    this.otpStore.delete(phone);
+    const phone = this.consumeOtp(this.otpStore, rawPhone, rawOtp);
 
     let user = await this.prisma.user.findUnique({
       where: { phone },
@@ -186,6 +137,57 @@ export class AuthService {
     return this.createSessionResponse(user);
   }
 
+  async sendAdminOtp(rawPhone: string) {
+    const admin = await this.resolveAdminByPhone(rawPhone, true);
+    return this.issueOtp(this.adminOtpStore, admin.phone ?? rawPhone);
+  }
+
+  async verifyAdminOtp(rawPhone: string, rawOtp: string) {
+    const admin = await this.resolveAdminByPhone(rawPhone, true);
+    let phone: string;
+
+    try {
+      phone = this.consumeOtp(this.adminOtpStore, admin.phone ?? rawPhone, rawOtp);
+    } catch (error) {
+      await this.prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          loginAttempts: {
+            increment: 1,
+          },
+        },
+      });
+      throw error;
+    }
+
+    await this.prisma.admin.update({
+      where: { id: admin.id },
+      data: {
+        phone,
+        lastLoginAt: new Date(),
+        loginAttempts: 0,
+      },
+    });
+
+    await this.prisma.adminActivityLog.create({
+      data: {
+        adminId: admin.id,
+        action: 'auth.login',
+        resourceType: 'admin',
+        resourceId: admin.id,
+        details: {
+          method: 'otp',
+          phone,
+        },
+      },
+    });
+
+    return this.createAdminSessionResponse({
+      ...admin,
+      phone,
+    });
+  }
+
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -193,6 +195,18 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException();
     return buildAuthUser(user);
+  }
+
+  async getAdminMe(adminId: string) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+    });
+
+    if (!admin || !admin.isActive) {
+      throw new UnauthorizedException();
+    }
+
+    return buildAdminUser(admin);
   }
 
   async getAppState(userId: string): Promise<AppStateResponse> {
@@ -274,12 +288,147 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       phone: user.phone,
+      subjectType: 'user',
     });
 
     return {
       accessToken,
       user: buildAuthUser(user),
     };
+  }
+
+  private createAdminSessionResponse(admin: {
+    id: string;
+    email: string;
+    phone: string | null;
+    displayName: string;
+    role: string;
+  }) {
+    const accessToken = this.jwtService.sign({
+      sub: admin.id,
+      email: admin.email,
+      phone: admin.phone,
+      role: admin.role,
+      subjectType: 'admin',
+    });
+
+    const refreshToken = this.jwtService.sign(
+      {
+        sub: admin.id,
+        role: admin.role,
+        subjectType: 'admin',
+        tokenType: 'refresh',
+      },
+      { expiresIn: '30d' },
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      admin: buildAdminUser(admin),
+    };
+  }
+
+  private issueOtp(store: Map<string, OtpSession>, rawPhone: string) {
+    const phone = this.normalizePhoneNumber(rawPhone);
+    const existingSession = store.get(phone);
+    const now = Date.now();
+
+    if (existingSession && now - existingSession.lastSentAt < OTP_RESEND_INTERVAL_MS) {
+      throw new HttpException(
+        'Please wait before requesting another OTP',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const otp = this.generateOtp();
+    store.set(phone, {
+      otp,
+      expiresAt: now + OTP_TTL_MS,
+      lastSentAt: now,
+      failedAttempts: 0,
+    });
+
+    return {
+      success: true,
+      phone,
+      expiresInSeconds: OTP_TTL_MS / 1000,
+      debugOtp: process.env.NODE_ENV === 'production' ? undefined : otp,
+      delivery: process.env.NODE_ENV === 'production' ? 'pending_sms_setup' : 'debug',
+    };
+  }
+
+  private consumeOtp(store: Map<string, OtpSession>, rawPhone: string, rawOtp: string) {
+    const phone = this.normalizePhoneNumber(rawPhone);
+    const otp = rawOtp.trim();
+    const session = store.get(phone);
+
+    if (!session) {
+      throw new UnauthorizedException('Request an OTP before verifying');
+    }
+
+    if (Date.now() > session.expiresAt) {
+      store.delete(phone);
+      throw new UnauthorizedException('OTP expired. Please request a new one');
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new BadRequestException('OTP must be a 6-digit code');
+    }
+
+    if (session.otp !== otp) {
+      session.failedAttempts += 1;
+      if (session.failedAttempts >= MAX_FAILED_OTP_ATTEMPTS) {
+        store.delete(phone);
+      } else {
+        store.set(phone, session);
+      }
+      throw new UnauthorizedException('Invalid OTP');
+    }
+
+    store.delete(phone);
+    return phone;
+  }
+
+  private async resolveAdminByPhone(rawPhone: string, allowDevelopmentBootstrap = false) {
+    const phone = this.normalizePhoneNumber(rawPhone);
+    let admin = await this.prisma.admin.findUnique({
+      where: { phone },
+    });
+
+    if (!admin && allowDevelopmentBootstrap && process.env.NODE_ENV !== 'production') {
+      admin = await this.bootstrapDevelopmentAdmin(phone);
+    }
+
+    if (!admin) {
+      throw new ForbiddenException('This phone number is not authorized for admin access');
+    }
+
+    if (!admin.phone) {
+      throw new ForbiddenException('Admin account is not configured for phone OTP');
+    }
+
+    if (!admin.isActive) {
+      throw new ForbiddenException('Admin account is disabled');
+    }
+
+    return admin;
+  }
+
+  private async bootstrapDevelopmentAdmin(phone: string) {
+    const phoneSuffix = phone.replace(/\D/g, '').slice(-10);
+
+    return this.prisma.admin.create({
+      data: {
+        phone,
+        email: `dev-admin-${phoneSuffix}@quickshield.local`,
+        displayName: `Dev Admin ${phoneSuffix.slice(-4)}`,
+        role: 'SUPERADMIN',
+        canApproveClaims: true,
+        canManageAdmins: true,
+        canManagePricing: true,
+      },
+    });
   }
 
   private normalizePhoneNumber(rawPhone: string) {

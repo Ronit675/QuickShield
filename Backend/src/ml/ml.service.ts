@@ -11,6 +11,14 @@ export interface RiskPrediction {
   source: 'ml_model' | 'static_fallback';
 }
 
+export interface MlModelInfo {
+  modelVersion: string;
+  zones: string[];
+  features: string[];
+  metrics?: Record<string, number | string | boolean | null>;
+  source: 'ml_service' | 'static_fallback';
+}
+
 interface MlServiceResponse {
   F: number;
   Z: number;
@@ -112,6 +120,56 @@ export class MlService {
         `ML service unreachable (${err instanceof Error ? err.message : String(err)}). Using static fallback.`,
       );
       return this.staticFallback(params.zoneId, params.platform, params.month, params.forecastRisk);
+    }
+  }
+
+  async getModelInfo(): Promise<MlModelInfo> {
+    try {
+      const { data } = await axios.get<Record<string, unknown>>(`${this.ML_URL}/model/info`, {
+        timeout: 3000,
+      });
+
+      const features = Array.isArray(data.features)
+        ? data.features.filter((value): value is string => typeof value === 'string')
+        : [];
+      const zones = Array.isArray(data.zones)
+        ? data.zones.filter((value): value is string => typeof value === 'string')
+        : Object.keys(ZONE_RISK_MAP);
+
+      return {
+        modelVersion: typeof data.model_version === 'string' ? data.model_version : 'unknown',
+        zones,
+        features,
+        metrics: Object.fromEntries(
+          Object.entries(data).filter(([key, value]) =>
+            !['model_version', 'zones', 'features'].includes(key)
+            && ['number', 'string', 'boolean'].includes(typeof value),
+          ),
+        ),
+        source: 'ml_service',
+      };
+    } catch (err) {
+      this.logger.warn(
+        `ML model info unavailable (${err instanceof Error ? err.message : String(err)}). Using static fallback.`,
+      );
+      return {
+        modelVersion: 'static-fallback',
+        zones: Object.keys(ZONE_RISK_MAP),
+        features: [
+          'zone_id',
+          'platform',
+          'month',
+          'day_of_week',
+          'rainfall_forecast_mm',
+          'historical_disruption_rate',
+          'civic_flag',
+          'monsoon_intensity',
+        ],
+        metrics: {
+          models_loaded: false,
+        },
+        source: 'static_fallback',
+      };
     }
   }
 

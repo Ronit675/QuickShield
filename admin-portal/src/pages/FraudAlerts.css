@@ -1,0 +1,123 @@
+.fraud-alerts-page {
+  display: grid;
+  gap: 20px;
+}
+
+.alerts-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.alerts-toolbar select {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 11px 14px;
+}
+
+.alerts-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.alerts-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.alert-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  text-align: left;
+}
+
+.alert-row.selected {
+  border-color: rgba(61, 217, 177, 0.24);
+  background: rgba(61, 217, 177, 0.08);
+}
+
+.alert-row-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.severity-pill {
+  align-self: start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.severity-pill.critical {
+  background: rgba(255, 109, 95, 0.16);
+  color: #ffd3cf;
+}
+
+.severity-pill.high {
+  background: rgba(255, 190, 85, 0.14);
+  color: #ffe4b0;
+}
+
+.severity-pill.medium,
+.severity-pill.low {
+  background: rgba(61, 217, 177, 0.12);
+  color: #d8fff3;
+}
+
+.alert-risk {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.alert-detail {
+  display: grid;
+  gap: 20px;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.detail-item span {
+  color: var(--muted);
+}
+
+.detail-section {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-section h3 {
+  margin: 0;
+}
+
+@media (max-width: 1080px) {
+  .alerts-grid,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

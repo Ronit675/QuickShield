@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -14,64 +8,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AdminRole {
+  ADMIN
+  FRAUD_REVIEWER
+  CLAIMS_OFFICER
+  ANALYTICS_LEAD
+  SUPERADMIN
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model User {
-  id           String        @id @default(uuid())
-  phone        String?       @unique
-  email        String?       @unique
+  id           String         @id @default(uuid())
+  phone        String?        @unique
+  email        String?        @unique
   fullName     String?
   dateOfBirth  DateTime?
   address      String?
   profilePhoto String?
-  authProvider String      // "google" | "apple" | "phone"
-  createdAt    DateTime      @default(now())
+  authProvider String // "google" | "apple" | "phone"
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
   profile      RiderProfile?
   appState     RiderAppState?
   policies     Policy[]
+
+  @@index([createdAt])
 }
 
 model RiderProfile {
-  id                       String   @id @default(uuid())
-  userId                   String   @unique
-  user                     User     @relation(fields: [userId], references: [id])
-  platform                 String   // "zepto" | "blinkit"
+  id                       String       @id @default(uuid())
+  userId                   String       @unique
+  user                     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform                 String // "zepto" | "blinkit"
   city                     String?
-  serviceZone              String   // e.g. "Bengaluru-Koramangala"
+  serviceZone              String // e.g. "Bengaluru-Koramangala"
   avgDailyIncome           Float
   workingHours             Int?
   workingShiftLabel        String?
-  workingTimeSlots         String[] @default([])
-  weeklyWorkDays           Int      @default(6)
-  zoneRiskScore            Float    @default(0.3)  // seeded from zone history
-  platformConnectionStatus String   @default("not_connected") // "not_connected" | "verified" | "not_found"
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  workingTimeSlots         String[]     @default([])
+  weeklyWorkDays           Int          @default(6)
+  zoneRiskScore            Float        @default(0.3)
+  platformConnectionStatus String       @default("not_connected") // "not_connected" | "verified" | "not_found"
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+  serviceZoneRef           ServiceZone? @relation("RiderProfilesByServiceZone", fields: [serviceZone], references: [code], onDelete: Restrict)
+
+  @@index([platform])
+  @@index([city])
+  @@index([serviceZone])
+  @@index([platformConnectionStatus])
 }
 
 model RiderAppState {
-  id                     String      @id @default(uuid())
-  userId                 String      @unique
-  user                   User        @relation(fields: [userId], references: [id])
-  flagCount              Int         @default(0)
-  currentFlagLevel       String      @default("none")
-  currentReasons         String[]    @default([])
-  currentStatusText      String      @default("GPS check inactive")
-  lastCheckedAt          DateTime?
-  redFlagDetectedAt      DateTime?
-  normalizedAfterRedAt   DateTime?
-  outOfStationActive     Boolean     @default(false)
-  outOfStationSince      DateTime?
-  outOfStationUntil      DateTime?
+  id                      String      @id @default(uuid())
+  userId                  String      @unique
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flagCount               Int         @default(0)
+  currentFlagLevel        String      @default("none")
+  currentReasons          String[]    @default([])
+  currentStatusText       String      @default("GPS check inactive")
+  lastCheckedAt           DateTime?
+  redFlagDetectedAt       DateTime?
+  normalizedAfterRedAt    DateTime?
+  outOfStationActive      Boolean     @default(false)
+  outOfStationSince       DateTime?
+  outOfStationUntil       DateTime?
   outOfStationReturnLabel String?
-  appBackToNormalAt      DateTime?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  flagEvents             FlagEvent[]
+  appBackToNormalAt       DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  flagEvents              FlagEvent[]
 }
 
 model FlagEvent {
   id         String        @id @default(uuid())
   appStateId String
-  appState   RiderAppState @relation(fields: [appStateId], references: [id])
+  appState   RiderAppState @relation(fields: [appStateId], references: [id], onDelete: Cascade)
   reason     String
   detectedAt DateTime
   createdAt  DateTime      @default(now())
@@ -81,38 +115,227 @@ model FlagEvent {
 }
 
 model Policy {
-  id              String   @id @default(uuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  status          String   // "active" | "expired" | "pending_payment"
-  weekStartDate   DateTime
-  weekEndDate     DateTime
-  coveragePerDay  Float
-  weeklyPremium   Float
-  riskSnapshot    Json     // { F, Z, A, composite } at time of purchase
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  claims          Claim[]
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId         String?
+  plan           InsurancePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  status         String // "active" | "expired" | "pending_payment"
+  weekStartDate  DateTime
+  weekEndDate    DateTime
+  coveragePerDay Float
+  weeklyPremium  Float
+  riskSnapshot   Json // { F, Z, A, composite, autoRenew } at time of purchase
+  platform       String?
+  city           String?
+  serviceZone    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  cancelledAt    DateTime?
+  expiredAt      DateTime?
+  claims         Claim[]
+
+  serviceZoneRef ServiceZone? @relation("PoliciesByServiceZone", fields: [serviceZone], references: [code], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([serviceZone])
+  @@index([weekStartDate])
+  @@index([weekEndDate])
 }
 
 model Claim {
-  id             String   @id @default(uuid())
-  policyId       String
-  policy         Policy   @relation(fields: [policyId], references: [id])
-  triggerType    String   // "rain" | "app_outage" | "zone_closure"
-  affectedSlots  Json     // ["S3", "S4"]
-  disruptedHours Float
-  payoutAmount   Float
-  status         String   // "auto_approved" | "pending_review" | "paid"
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String      @id @default(uuid())
+  policyId          String
+  policy            Policy      @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  triggerType       String // "rain" | "app_outage" | "zone_closure"
+  affectedSlots     Json // ["S3", "S4"]
+  disruptedHours    Float
+  payoutAmount      Float
+  status            String // "auto_approved" | "pending_review" | "paid"
+  claimSessionKey   String?
+  riskScore         Float       @default(0.5)
+  isSuspicious      Boolean     @default(false)
+  reviewNotes       String?
+  reviewedByAdminId String?
+  reviewedByAdmin   Admin?      @relation("ClaimsReviewedByAdmin", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  reviewedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  fraudAlert        FraudAlert?
+  payout            Payout?
+
+  @@index([policyId])
+  @@index([triggerType])
+  @@index([status])
+  @@index([claimSessionKey])
+  @@index([isSuspicious])
+  @@index([reviewedByAdminId])
+  @@index([createdAt])
 }
 
 model DisruptionEvent {
-  id          String   @id @default(uuid())
-  zone        String
-  triggerType String
-  startTime   DateTime
-  endTime     DateTime?
-  dataSnapshot Json    // raw API response that triggered it
+  id             String       @id @default(uuid())
+  zone           String
+  triggerType    String
+  startTime      DateTime
+  endTime        DateTime?
+  dataSnapshot   Json // raw API response that triggered it
+  createdAt      DateTime     @default(now())
+  serviceZoneRef ServiceZone? @relation("DisruptionEventsByServiceZone", fields: [zone], references: [code], onDelete: Restrict)
+
+  @@index([zone])
+  @@index([triggerType])
+  @@index([startTime])
+}
+
+model Admin {
+  id               String             @id @default(uuid())
+  email            String             @unique
+  phone            String?            @unique
+  displayName      String
+  passwordHash     String?
+  role             AdminRole          @default(ADMIN)
+  canViewClaims    Boolean            @default(true)
+  canApproveClaims Boolean            @default(false)
+  canManageAdmins  Boolean            @default(false)
+  canViewAnalytics Boolean            @default(true)
+  canManagePricing Boolean            @default(false)
+  lastLoginAt      DateTime?
+  loginAttempts    Int                @default(0)
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  activityLogs     AdminActivityLog[]
+  reviewedClaims   Claim[]            @relation("ClaimsReviewedByAdmin")
+  reviewedAlerts   FraudAlert[]       @relation("FraudAlertsReviewedByAdmin")
+  processedPayouts Payout[]           @relation("PayoutsProcessedByAdmin")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model AdminActivityLog {
+  id           String   @id @default(uuid())
+  adminId      String
+  admin        Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+}
+
+model FraudAlert {
+  id                String        @id @default(uuid())
+  claimId           String        @unique
+  claim             Claim         @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  severity          AlertSeverity @default(MEDIUM)
+  riskScore         Float
+  reasons           String[]      @default([])
+  reviewedByAdminId String?
+  reviewedByAdmin   Admin?        @relation("FraudAlertsReviewedByAdmin", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  status            AlertStatus   @default(OPEN)
+  resolution        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  resolvedAt        DateTime?
+
+  @@index([severity])
+  @@index([status])
+  @@index([reviewedByAdminId])
+  @@index([createdAt])
+}
+
+model Payout {
+  id                 String       @id @default(uuid())
+  claimId            String       @unique
+  claim              Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  amount             Float
+  status             PayoutStatus @default(PENDING)
+  method             String // "bank_transfer" | "wallet" | "check"
+  externalReference  String?
+  processedByAdminId String?
+  processedByAdmin   Admin?       @relation("PayoutsProcessedByAdmin", fields: [processedByAdminId], references: [id], onDelete: SetNull)
+  processedAt        DateTime?
+  scheduledFor       DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([status])
+  @@index([processedByAdminId])
+  @@index([scheduledFor])
+}
+
+model ServiceZone {
+  id                    String            @id @default(uuid())
+  code                  String            @unique
+  name                  String
+  city                  String
+  baseRiskScore         Float             @default(0.5)
+  alertThreshold        Float             @default(0.7)
+  activePoliciesCount   Int               @default(0)
+  suspiciousClaimsCount Int               @default(0)
+  totalPayoutAmount     Float             @default(0)
+  isActive              Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  riderProfiles         RiderProfile[]    @relation("RiderProfilesByServiceZone")
+  policies              Policy[]          @relation("PoliciesByServiceZone")
+  disruptionEvents      DisruptionEvent[] @relation("DisruptionEventsByServiceZone")
+  pricingStrategies     PricingStrategy[]
+
+  @@unique([city, name])
+  @@index([city])
+  @@index([isActive])
+}
+
+model PricingStrategy {
+  id             String         @id @default(uuid())
+  serviceZone    String
+  serviceZoneRef ServiceZone    @relation(fields: [serviceZone], references: [code], onDelete: Restrict)
+  planId         String?
+  plan           InsurancePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  disruptionType String
+  basePremium    Float
+  riskMultiplier Float
+  deductible     Float
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([serviceZone, disruptionType, effectiveFrom])
+  @@index([planId])
+  @@index([serviceZone])
+  @@index([disruptionType])
+  @@index([effectiveFrom])
+  @@index([isActive])
+}
+
+model InsurancePlan {
+  id                String            @id @default(uuid())
+  name              String
+  slug              String            @unique
+  description       String?
+  coverageMin       Float
+  coverageMax       Float
+  weeklyBasePremium Float
+  isActive          Boolean           @default(true)
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  policies          Policy[]
+  pricingStrategies PricingStrategy[]
+
+  @@index([isActive])
 }
