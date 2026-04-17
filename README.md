@@ -4,10 +4,6 @@ QuickShield is a multi-service prototype for parametric income protection aimed 
 
 This root README is the final submission overview. Component-level setup and implementation notes are documented in:
 
-- [QuickShield/README.md](QuickShield/README.md)
-- [admin-portal/README.md](admin-portal/README.md)
-- [ml-service/README.md](ml-service/README.md)
-
 ## Submission Summary
 
 The current codebase implements the core prototype layers:
@@ -226,3 +222,6 @@ Use the subproject READMEs for implementation detail:
 ## Final Notes
 
 QuickShield is best understood as a working end-to-end prototype rather than a production-ready insurance platform. The repository demonstrates the intended product architecture, core user/admin flows, and ML-assisted pricing path, while still leaving live integrations, real trigger pipelines, and production hardening for future work.
+
+## Pitch Deck 
+https://drive.google.com/file/d/1-WWYue8dtFpIB6ezGLnh8USlBlgyawWj/view?usp=drive_link
