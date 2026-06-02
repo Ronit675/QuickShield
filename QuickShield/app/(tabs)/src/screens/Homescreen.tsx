@@ -95,6 +95,30 @@ const formatDuration = (durationMs: number) => {
   return `${seconds}s`;
 };
 
+const formatClockDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, '0'))
+    .join(':');
+};
+
+const formatHistoryWindow = (createdAt: string) => {
+  const start = new Date(createdAt);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+  const options: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  };
+
+  return `${start.toLocaleTimeString('en-IN', options)} - ${end.toLocaleTimeString('en-IN', options)}`;
+};
+
 const formatDateOptionLabel = (date: Date) => date.toLocaleDateString('en-GB', {
   day: '2-digit',
   month: '2-digit',
@@ -236,6 +260,7 @@ export default function HomeScreen({
   const [miniTrackingLoading, setMiniTrackingLoading] = useState(true);
   const [miniIsTracking, setMiniIsTracking] = useState(false);
   const [miniTrackedStartMs, setMiniTrackedStartMs] = useState<number | null>(null);
+  const [miniRainfallRateMmPerHr, setMiniRainfallRateMmPerHr] = useState<number | null>(null);
   const [miniWeatherSummary, setMiniWeatherSummary] = useState(t('home.waitingDisruption'));
   const [miniClockMs, setMiniClockMs] = useState(Date.now());
   const [showFlagQna, setShowFlagQna] = useState(false);
@@ -320,6 +345,7 @@ export default function HomeScreen({
   const platformLabel = formatPlatformName(user?.platform ?? null);
   const hasRedeemableBalance = totalPaidOut > 0;
   const isPremiumTab = variant === 'premium';
+  const isPremiumEmptyState = isPremiumTab && policy?.status !== 'active';
   const needsPlatformConnectForMiniTimer =
     user?.platformConnectionStatus !== 'verified'
     || user?.avgDailyIncome === null
@@ -330,6 +356,7 @@ export default function HomeScreen({
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
       setMiniTrackedStartMs(null);
+      setMiniRainfallRateMmPerHr(null);
       setMiniWeatherSummary(pausedClaimsMessage);
       return;
     }
@@ -338,6 +365,7 @@ export default function HomeScreen({
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
       setMiniTrackedStartMs(null);
+      setMiniRainfallRateMmPerHr(null);
       setMiniWeatherSummary(t('home.connectForSlots'));
       return;
     }
@@ -346,10 +374,11 @@ export default function HomeScreen({
     setMiniWeatherSummary(trackingState.weatherSummary);
     setMiniIsTracking(trackingState.isTracking);
     setMiniTrackedStartMs(trackingState.trackedStartMs);
+    setMiniRainfallRateMmPerHr(trackingState.rainfallRateMmPerHr);
   }, [isClaimsFeatureDisabled, needsPlatformConnectForMiniTimer, pausedClaimsMessage, t, user]);
 
   useEffect(() => {
-    if (!isActive || isPremiumTab) {
+    if (!isActive) {
       return;
     }
 
@@ -366,6 +395,7 @@ export default function HomeScreen({
         if (isMounted) {
           setMiniIsTracking(false);
           setMiniTrackedStartMs(null);
+          setMiniRainfallRateMmPerHr(null);
           setMiniWeatherSummary(t('home.disruptionRefreshFailed'));
         }
       } finally {
@@ -396,11 +426,21 @@ export default function HomeScreen({
       clearInterval(refreshInterval);
       clearInterval(timerInterval);
     };
-  }, [isActive, isPremiumTab, refreshMiniDisruptionState, t]);
+  }, [isActive, refreshMiniDisruptionState, t]);
 
   const miniElapsedMs = miniIsTracking && miniTrackedStartMs
     ? Math.max(0, miniClockMs - miniTrackedStartMs)
     : 0;
+  const shouldShowActiveDisruptionDesign =
+    !isClaimsFeatureDisabled
+    && !needsPlatformConnectForMiniTimer
+    && policy?.status === 'active'
+    && miniIsTracking;
+  const miniWorkingSlotLabel = user?.workingShiftLabel || user?.workingTimeSlots?.[0] || 'Not assigned';
+  const miniAccruedClaimAmount = policy?.status === 'active'
+    ? (policy.coveragePerDay / 24) * (miniElapsedMs / 3600000)
+    : 0;
+  const isPremiumDesignState = isPremiumEmptyState || (isPremiumTab && shouldShowActiveDisruptionDesign);
 
   useEffect(() => {
     if (!isClaimsFeatureDisabled || !outOfTownUntilDate) {
@@ -796,8 +836,11 @@ export default function HomeScreen({
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
+    <View style={[styles.container, isPremiumDesignState && styles.premiumEmptyContainer]}>
+      <StatusBar
+        barStyle={isPremiumDesignState ? 'dark-content' : 'light-content'}
+        backgroundColor={isPremiumDesignState ? '#FFFFFF' : '#0A0A0F'}
+      />
 
       <QuickShieldSidebar
         visible={profileMenuVisible}
@@ -824,79 +867,89 @@ export default function HomeScreen({
       />
 
       {/* Top bar */}
-      <View style={styles.topBar}>
-        <View style={styles.profileEntry}>
-          <TouchableOpacity
-            onPress={() => setProfileMenuVisible((current) => !current)}
-            activeOpacity={0.85}
-            style={styles.avatarButton}
-          >
-            <ProfileAvatar uri={user?.profilePhoto} size={48} borderRadius={16} />
-          </TouchableOpacity>
-          <View style={styles.profileTextWrap}>
-            <Text style={styles.greeting}>{t('home.greeting')} 🧑‍✈️</Text>
-            <Text style={styles.profileName}>{displayName}</Text>
-          </View>
-        </View>
-
-        {!isPremiumTab && (
-          <View
-            style={[
-              styles.integrityFlag,
-              locationIntegrity.flagLevel === 'red'
-                ? styles.integrityFlagDanger
-                : locationIntegrity.flagLevel === 'yellow'
-                  ? styles.integrityFlagWarning
-                  : locationIntegrity.flagLevel === 'green'
-                    ? styles.integrityFlagRecovery
-                    : styles.integrityFlagSafe,
-            ]}
-          >
-            {locationIntegrity.isChecking ? (
-              <ActivityIndicator
-                color={
-                  locationIntegrity.flagLevel === 'red'
-                    ? '#FCA5A5'
-                    : locationIntegrity.flagLevel === 'yellow'
-                      ? '#FDE68A'
-                      : locationIntegrity.flagLevel === 'green'
-                        ? '#86EFAC'
-                        : '#86EFAC'
-                }
-                size="small"
-              />
-            ) : (
-              <Ionicons
-                name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
-                size={18}
-                color={
-                  locationIntegrity.flagLevel === 'red'
-                    ? '#FCA5A5'
-                    : locationIntegrity.flagLevel === 'yellow'
-                      ? '#FDE68A'
-                      : locationIntegrity.flagLevel === 'green'
-                        ? '#86EFAC'
-                        : '#86EFAC'
-                }
-              />
-            )}
-            <Text style={styles.integrityLabel}>
-              {locationIntegrity.flagLevel === 'red'
-                ? 'Red Flag'
-                : locationIntegrity.flagLevel === 'yellow'
-                  ? 'Yellow Flag'
-                  : locationIntegrity.flagLevel === 'green'
-                    ? 'Recovered'
-                    : 'Safe'}
+      {isPremiumDesignState ? (
+        <View style={styles.premiumEmptyTopBar}>
+          <View style={styles.premiumEmptyBrand}>
+            <Text style={styles.premiumEmptyBrandText}>
+              {shouldShowActiveDisruptionDesign ? 'Insurance' : 'QuickShield'}
             </Text>
           </View>
-        )}
-      </View>
+        </View>
+      ) : (
+        <View style={styles.topBar}>
+          <View style={styles.profileEntry}>
+            <TouchableOpacity
+              onPress={() => setProfileMenuVisible((current) => !current)}
+              activeOpacity={0.85}
+              style={styles.avatarButton}
+            >
+              <ProfileAvatar uri={user?.profilePhoto} size={48} borderRadius={16} />
+            </TouchableOpacity>
+            <View style={styles.profileTextWrap}>
+              <Text style={styles.greeting}>{t('home.greeting')} 🧑‍✈️</Text>
+              <Text style={styles.profileName}>{displayName}</Text>
+            </View>
+          </View>
+
+          {!isPremiumTab && (
+            <View
+              style={[
+                styles.integrityFlag,
+                locationIntegrity.flagLevel === 'red'
+                  ? styles.integrityFlagDanger
+                  : locationIntegrity.flagLevel === 'yellow'
+                    ? styles.integrityFlagWarning
+                    : locationIntegrity.flagLevel === 'green'
+                      ? styles.integrityFlagRecovery
+                      : styles.integrityFlagSafe,
+              ]}
+            >
+              {locationIntegrity.isChecking ? (
+                <ActivityIndicator
+                  color={
+                    locationIntegrity.flagLevel === 'red'
+                      ? '#FCA5A5'
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? '#FDE68A'
+                        : locationIntegrity.flagLevel === 'green'
+                          ? '#86EFAC'
+                          : '#86EFAC'
+                  }
+                  size="small"
+                />
+              ) : (
+                <Ionicons
+                  name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
+                  size={18}
+                  color={
+                    locationIntegrity.flagLevel === 'red'
+                      ? '#FCA5A5'
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? '#FDE68A'
+                        : locationIntegrity.flagLevel === 'green'
+                          ? '#86EFAC'
+                          : '#86EFAC'
+                  }
+                />
+              )}
+              <Text style={styles.integrityLabel}>
+                {locationIntegrity.flagLevel === 'red'
+                  ? 'Red Flag'
+                  : locationIntegrity.flagLevel === 'yellow'
+                    ? 'Yellow Flag'
+                    : locationIntegrity.flagLevel === 'green'
+                      ? 'Recovered'
+                      : 'Safe'}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor="#00E5A0" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor={isPremiumDesignState ? '#736400' : '#00E5A0'} />}
       >
         {isClaimsFeatureDisabled && (
           <View style={styles.imBackCard}>
@@ -1058,133 +1111,257 @@ export default function HomeScreen({
           </>
         ) : policy?.status === 'active' ? (
           <>
-            <RainDisruptionCard
-              isActive={isActive}
-              isPaused={isClaimsFeatureDisabled}
-              pausedUntilLabel={selectedReturnDateLabel}
-              onPolicyRefresh={syncPolicy}
-              policy={policy}
-              user={user}
-            />
-
-            <View style={styles.autoRenewCard}>
-              <View style={styles.autoRenewHeader}>
-                <View style={styles.autoRenewTextWrap}>
-                  <Text style={styles.autoRenewTitle}>Auto renew premium</Text>
-                  <Text style={styles.autoRenewSubtitle}>
-                    Automatically renew this weekly premium at cycle end.
-                  </Text>
+            {shouldShowActiveDisruptionDesign ? (
+              <View style={styles.activeProtectionSection}>
+                <View style={styles.hiddenRainDisruptionSync}>
+                  <RainDisruptionCard
+                    isActive={isActive}
+                    isPaused={isClaimsFeatureDisabled}
+                    pausedUntilLabel={selectedReturnDateLabel}
+                    onPolicyRefresh={syncPolicy}
+                    policy={policy}
+                    user={user}
+                  />
                 </View>
 
-                <AnimatedAutoRenewSwitch
-                  value={autoRenewEnabled}
-                  onValueChange={(nextValue) => {
-                    void handleToggleAutoRenew(nextValue);
-                  }}
-                  disabled={updatingAutoRenew}
-                />
-              </View>
-            </View>
+                <Text style={styles.activeProtectionSectionTitle}>Active Protection</Text>
 
-            <View style={styles.policyCard}>
-              <View style={styles.policyCardHeader}>
-                <Text style={styles.policyCardTitle}>Active protection</Text>
-                <View style={styles.activeBadge}>
-                  <View style={styles.activeDot} />
-                  <Text style={styles.activeBadgeText}>Active</Text>
-                </View>
-              </View>
+                <View style={styles.activeDisruptionPanel}>
+                  <View style={styles.activeDisruptionHeader}>
+                    <Text style={styles.activeDisruptionTitle}>Active Disruption</Text>
+                    <View style={styles.rainingNowBadge}>
+                      <Ionicons name="water" size={13} color="#B92902" />
+                      <Text style={styles.rainingNowBadgeText}>Raining Now</Text>
+                    </View>
+                  </View>
 
-              <Text style={styles.coverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
-              <Text style={styles.coverageLabel}>per day coverage</Text>
-
-              <View style={styles.divider} />
-
-              <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Text style={styles.statVal}>{daysLeft}</Text>
-                  <Text style={styles.statLabel}>Days left</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.stat}>
-                  <Text style={styles.statVal}>{formatCurrency(policy.weeklyPremium)}</Text>
-                  <Text style={styles.statLabel}>Weekly premium</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.stat}>
-                  <Text style={[styles.statVal, { color: '#00E5A0' }]}>{formatCurrency(totalPaidOut)}</Text>
-                  <Text style={styles.statLabel}>Paid out</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.removePolicyBtn, removingPolicy && styles.removePolicyBtnDisabled]}
-                onPress={confirmRemoveActivePolicy}
-                disabled={removingPolicy}
-                activeOpacity={0.85}
-              >
-                {removingPolicy ? (
-                  <ActivityIndicator color="#FCA5A5" />
-                ) : (
-                  <Text style={styles.removePolicyBtnText}>Remove current calculation</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.sectionTitle}>Recent claims</Text>
-            {claims.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No disruptions this week. Stay protected!</Text>
-              </View>
-            ) : (
-              claims.map((claim, i) => (
-                <View key={i} style={styles.claimRow}>
-                  <Text style={styles.claimType}>{TRIGGER_LABELS[claim.triggerType] ?? claim.triggerType}</Text>
-                  <View style={styles.claimRight}>
-                    <Text style={styles.claimAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
-                    <View style={[styles.claimBadge, claim.status === 'paid' && styles.claimBadgePaid]}>
-                      <Text style={styles.claimBadgeText}>{claim.status === 'paid' ? 'Paid' : 'Processing'}</Text>
+                  <View style={styles.activeMetricGrid}>
+                    <View style={styles.activeMetricTile}>
+                      <Text style={styles.activeMetricLabel}>Disruption Duration</Text>
+                      <Text style={styles.activeMetricValueLarge}>{formatClockDuration(miniElapsedMs)}</Text>
+                    </View>
+                    <View style={styles.activeMetricTile}>
+                      <Text style={styles.activeMetricLabel}>Working Slot</Text>
+                      <Text numberOfLines={1} style={styles.activeMetricValue}>{miniWorkingSlotLabel}</Text>
+                    </View>
+                    <View style={styles.activeMetricTile}>
+                      <Text style={styles.activeMetricLabel}>Accrued Claims</Text>
+                      <Text style={styles.activeMetricValuePrimary}>{formatCurrency(miniAccruedClaimAmount)}</Text>
+                    </View>
+                    <View style={styles.activeMetricTile}>
+                      <Text style={styles.activeMetricLabel}>Current Rain Rate</Text>
+                      <Text style={styles.activeMetricValue}>
+                        {miniRainfallRateMmPerHr !== null ? `${miniRainfallRateMmPerHr.toFixed(1)} mm/hr` : 'Unavailable'}
+                      </Text>
                     </View>
                   </View>
                 </View>
-              ))
+
+                <View style={styles.rainShieldPanel}>
+                  <View style={styles.rainShieldHeader}>
+                    <Text style={styles.rainShieldTitle}>Rain Shield Active</Text>
+                    <View style={styles.rainShieldBadge}>
+                      <Text style={styles.rainShieldBadgeText}>Active</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.rainShieldStatsRow}>
+                    <View style={styles.rainShieldStat}>
+                      <Text style={styles.rainShieldStatLabel}>Remaining</Text>
+                      <Text style={styles.rainShieldStatValue}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</Text>
+                    </View>
+                    <View style={styles.rainShieldStatDivider} />
+                    <View style={styles.rainShieldStat}>
+                      <Text style={styles.rainShieldStatLabel}>Weekly</Text>
+                      <Text style={styles.rainShieldStatValue}>{formatCurrency(policy.weeklyPremium)}</Text>
+                    </View>
+                    <View style={styles.rainShieldStatDivider} />
+                    <View style={styles.rainShieldStat}>
+                      <Text style={styles.rainShieldStatLabel}>Paid Out</Text>
+                      <Text style={styles.rainShieldStatValue}>{formatCurrency(totalPaidOut)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.rainShieldCoverage}>
+                    <Text style={styles.rainShieldCoverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
+                    <Text style={styles.rainShieldCoverageCaption}>(100% of Avg. Daily Income)</Text>
+                    <Text style={styles.rainShieldCoverageLabel}>Per Day Coverage</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.rainShieldRemoveBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                    onPress={confirmRemoveActivePolicy}
+                    disabled={removingPolicy}
+                    activeOpacity={0.85}
+                  >
+                    {removingPolicy ? (
+                      <ActivityIndicator color="#5C5000" />
+                    ) : (
+                      <>
+                        <Ionicons name="close-circle-outline" size={18} color="#5C5000" />
+                        <Text style={styles.rainShieldRemoveBtnText}>Remove current subscription</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <RainDisruptionCard
+                  isActive={isActive}
+                  isPaused={isClaimsFeatureDisabled}
+                  pausedUntilLabel={selectedReturnDateLabel}
+                  onPolicyRefresh={syncPolicy}
+                  policy={policy}
+                  user={user}
+                />
+
+                <View style={styles.policyCard}>
+                  <View style={styles.policyCardHeader}>
+                    <Text style={styles.policyCardTitle}>Active protection</Text>
+                    <View style={styles.activeBadge}>
+                      <View style={styles.activeDot} />
+                      <Text style={styles.activeBadgeText}>Active</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.coverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
+                  <Text style={styles.coverageLabel}>per day coverage</Text>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.statsRow}>
+                    <View style={styles.stat}>
+                      <Text style={styles.statVal}>{daysLeft}</Text>
+                      <Text style={styles.statLabel}>Days left</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.stat}>
+                      <Text style={styles.statVal}>{formatCurrency(policy.weeklyPremium)}</Text>
+                      <Text style={styles.statLabel}>Weekly premium</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.stat}>
+                      <Text style={[styles.statVal, { color: '#00E5A0' }]}>{formatCurrency(totalPaidOut)}</Text>
+                      <Text style={styles.statLabel}>Paid out</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.removePolicyBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                    onPress={confirmRemoveActivePolicy}
+                    disabled={removingPolicy}
+                    activeOpacity={0.85}
+                  >
+                    {removingPolicy ? (
+                      <ActivityIndicator color="#FCA5A5" />
+                    ) : (
+                      <Text style={styles.removePolicyBtnText}>Remove current calculation</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {shouldShowActiveDisruptionDesign ? (
+              <View style={styles.protectNextRideBanner}>
+                <View style={styles.protectNextRideGlow} />
+                <View style={styles.protectNextRideContent}>
+                  <Text style={styles.protectNextRideTitle}>Protect your next ride</Text>
+                  <Text style={styles.protectNextRideSubtitle}>Instant activation for unplanned commutes.</Text>
+
+                  <View style={styles.protectNextRideAutoRenew}>
+                    <View style={styles.protectNextRideAutoRenewText}>
+                      <Text style={styles.protectNextRideAutoRenewTitle}>Auto-renew premium</Text>
+                      <Text style={styles.protectNextRideAutoRenewSubtitle}>
+                        Automatically renew this weekly premium at cycle end.
+                      </Text>
+                    </View>
+
+                    <AnimatedAutoRenewSwitch
+                      value={autoRenewEnabled}
+                      onValueChange={(nextValue) => {
+                        void handleToggleAutoRenew(nextValue);
+                      }}
+                      disabled={updatingAutoRenew}
+                      trackColors={{ on: '#C8BB1A', off: '#D9CF42' }}
+                      thumbColors={{ on: '#FFFFFF', off: '#FFFFFF' }}
+                    />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.autoRenewCard}>
+                <View style={styles.autoRenewHeader}>
+                  <View style={styles.autoRenewTextWrap}>
+                    <Text style={styles.autoRenewTitle}>Auto renew premium</Text>
+                    <Text style={styles.autoRenewSubtitle}>
+                      Automatically renew this weekly premium at cycle end.
+                    </Text>
+                  </View>
+
+                  <AnimatedAutoRenewSwitch
+                    value={autoRenewEnabled}
+                    onValueChange={(nextValue) => {
+                      void handleToggleAutoRenew(nextValue);
+                    }}
+                    disabled={updatingAutoRenew}
+                  />
+                </View>
+              </View>
+            )}
+
+            <Text style={styles.historyTitle}>Hourly Credit History</Text>
+            {claims.length === 0 ? (
+              <View style={styles.historyCard}>
+                <View style={styles.historyEmptyState}>
+                  <Text style={styles.emptyText}>No credits recorded yet.</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.historyCard}>
+                {claims.map((claim, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.historyRow,
+                      i === claims.length - 1 && styles.historyRowLast,
+                    ]}
+                  >
+                    <View style={styles.historyRowCopy}>
+                      <Text style={styles.historyRowTime}>{formatHistoryWindow(claim.createdAt)}</Text>
+                      <Text style={styles.historyRowRain}>
+                        {claim.triggerType === 'rain' ? 'RAIN CREDIT' : TRIGGER_LABELS[claim.triggerType] ?? claim.triggerType}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyRowAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
+                  </View>
+                ))}
+              </View>
             )}
           </>
         ) : (
-          <>
-            <View style={styles.autoRenewCard}>
-              <View style={styles.autoRenewHeader}>
-                <View style={styles.autoRenewTextWrap}>
-                  <Text style={styles.autoRenewTitle}>Auto renew premium</Text>
-                  <Text style={styles.autoRenewSubtitle}>
-                    No premium plan found. Buy a plan to enable auto-renew.
-                  </Text>
-                </View>
-
-                <AnimatedAutoRenewSwitch
-                  value={false}
-                  onValueChange={(nextValue) => {
-                    void handleToggleAutoRenew(nextValue);
-                  }}
-                  disabled
-                />
-              </View>
+          <View style={styles.noProtectionCard}>
+            <View style={styles.noProtectionIcon}>
+              <Ionicons name="shield-half-outline" size={58} color="#736400" />
             </View>
 
-            <View style={styles.ctaCard}>
-              <Text style={styles.ctaTitle}>You&apos;re not protected yet</Text>
-              <Text style={styles.ctaSubtitle}>
-                Get weekly income protection from ₹20/week. Auto-payouts when disruptions hit your zone.
-              </Text>
-              <TouchableOpacity
-                style={styles.ctaBtn}
-                onPress={handleGetProtected}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.ctaBtnText}>Get protected now</Text>
-              </TouchableOpacity>
-            </View>
-          </>
+            <Text style={styles.noProtectionTitle}>No Active Protection</Text>
+            <Text style={styles.noProtectionSubtitle}>
+              You aren&apos;t currently protected against weather disruptions. Browse our shield catalog to start coverage for your next shift.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.noProtectionBtn}
+              onPress={handleGetProtected}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Buy a Premium"
+            >
+              <Ionicons name="cart-outline" size={20} color="#473D00" />
+              <Text style={styles.noProtectionBtnText}>Buy a Premium</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
 
@@ -1306,10 +1483,38 @@ export default function HomeScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0F', paddingHorizontal: 20 },
+  premiumEmptyContainer: {
+    backgroundColor: '#FFFBFF',
+  },
   center: { flex: 1, backgroundColor: '#0A0A0F', justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 60, paddingBottom: 24,
+  },
+  premiumEmptyTopBar: {
+    marginHorizontal: -20,
+    paddingTop: 56,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F1EA',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  premiumEmptyBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  premiumEmptyBrandText: {
+    color: '#B59E00',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.4,
   },
   profileEntry: {
     flexDirection: 'row',
@@ -1539,6 +1744,208 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
 
+  activeProtectionSection: {
+    marginBottom: 18,
+  },
+  hiddenRainDisruptionSync: {
+    display: 'none',
+  },
+  activeProtectionSectionTitle: {
+    color: '#3B3A00',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  activeDisruptionPanel: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C0BD5F55',
+    backgroundColor: '#FFFCCB',
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activeDisruptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
+  activeDisruptionTitle: {
+    flex: 1,
+    color: '#3B3A00',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  rainingNowBadge: {
+    minHeight: 26,
+    borderRadius: 999,
+    backgroundColor: '#F956301A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+  },
+  rainingNowBadgeText: {
+    color: '#B92902',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  activeMetricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  activeMetricTile: {
+    width: '48%',
+    minHeight: 76,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C0BD5F33',
+    backgroundColor: '#FFFFFF88',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+  },
+  activeMetricLabel: {
+    color: '#69671099',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  activeMetricValueLarge: {
+    color: '#3B3A00',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  activeMetricValue: {
+    color: '#3B3A00',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  activeMetricValuePrimary: {
+    color: '#736400',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  rainShieldPanel: {
+    borderRadius: 12,
+    backgroundColor: '#FFDF00',
+    padding: 22,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  rainShieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 20,
+  },
+  rainShieldTitle: {
+    flex: 1,
+    color: '#5C5000',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  rainShieldBadge: {
+    borderRadius: 999,
+    backgroundColor: '#F1EE68',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  rainShieldBadgeText: {
+    color: '#3B3A00',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  rainShieldStatsRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  rainShieldStat: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  rainShieldStatLabel: {
+    color: '#5C500099',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 5,
+  },
+  rainShieldStatValue: {
+    color: '#5C5000',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  rainShieldStatDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: '#5C500033',
+  },
+  rainShieldCoverage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#5C50001A',
+    paddingVertical: 22,
+    marginBottom: 18,
+  },
+  rainShieldCoverageAmount: {
+    color: '#5C5000',
+    fontSize: 44,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+  rainShieldCoverageCaption: {
+    color: '#5C5000CC',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  rainShieldCoverageLabel: {
+    color: '#5C500099',
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 5,
+  },
+  rainShieldRemoveBtn: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#5C50004D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  rainShieldRemoveBtnText: {
+    color: '#5C5000CC',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+
   miniTimerCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -1723,13 +2130,19 @@ const styles = StyleSheet.create({
   },
 
   autoRenewCard: {
-    backgroundColor: '#102235',
-    borderRadius: 18,
+    backgroundColor: '#F4EA3A',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2B4763',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: '#E3D83A',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   autoRenewHeader: {
     flexDirection: 'row',
@@ -1739,29 +2152,93 @@ const styles = StyleSheet.create({
   },
   autoRenewTextWrap: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 10,
   },
   autoRenewTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
+    color: '#3B3A00',
+    fontSize: 19,
+    fontWeight: '900',
     marginBottom: 4,
   },
   autoRenewSubtitle: {
-    color: '#9FB8D3',
-    fontSize: 12,
-    lineHeight: 18,
+    color: '#756D00',
+    fontSize: 13,
+    lineHeight: 19,
   },
   autoRenewSwitchTrack: {
-    width: 52,
-    height: 32,
-    padding: 3,
+    width: 72,
+    height: 40,
+    padding: 4,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   autoRenewSwitchThumb: {
     height: '100%',
     aspectRatio: 1,
+  },
+
+  protectNextRideBanner: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E3D83A',
+    backgroundColor: '#F4EA3A',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    marginBottom: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  protectNextRideGlow: {
+    position: 'absolute',
+    right: -48,
+    top: -52,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  protectNextRideContent: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  protectNextRideTitle: {
+    color: '#3B3A00',
+    fontSize: 27,
+    fontWeight: '900',
+    lineHeight: 32,
+    letterSpacing: -0.6,
+    marginBottom: 10,
+  },
+  protectNextRideSubtitle: {
+    color: '#756D00',
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 22,
+    maxWidth: 470,
+  },
+  protectNextRideAutoRenew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(140, 128, 0, 0.18)',
+  },
+  protectNextRideAutoRenewText: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  protectNextRideAutoRenewTitle: {
+    color: '#3B3A00',
+    fontSize: 19,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  protectNextRideAutoRenewSubtitle: {
+    color: '#756D00',
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   policyCard: {
@@ -1795,31 +2272,133 @@ const styles = StyleSheet.create({
   removePolicyBtnDisabled: { opacity: 0.7 },
   removePolicyBtnText: { fontSize: 14, fontWeight: '700', color: '#FCA5A5' },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 12 },
-  claimRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#13131A', borderRadius: 12, padding: 16,
-    marginBottom: 8, borderWidth: 1, borderColor: '#1E1E2E',
+  historyTitle: {
+    color: '#3B3A00',
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    marginBottom: 18,
   },
-  claimType: { fontSize: 14, color: '#D1D5DB', fontWeight: '500' },
-  claimRight: { alignItems: 'flex-end', gap: 4 },
-  claimAmount: { fontSize: 15, fontWeight: '700', color: '#00E5A0' },
-  claimBadge: { backgroundColor: '#F59E0B22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  claimBadgePaid: { backgroundColor: '#00E5A022' },
-  claimBadgeText: { fontSize: 11, color: '#F59E0B', fontWeight: '600' },
-
-  emptyCard: {
-    backgroundColor: '#13131A', borderRadius: 12, padding: 20,
-    borderWidth: 1, borderColor: '#1E1E2E', alignItems: 'center',
+  historyCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E8E2A0',
+    backgroundColor: '#FBF8D5',
+    overflow: 'hidden',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+    marginBottom: 18,
+  },
+  historyRow: {
+    minHeight: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E2A0',
+  },
+  historyRowLast: {
+    borderBottomWidth: 0,
+  },
+  historyRowCopy: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  historyRowTime: {
+    color: '#3B3A00',
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  historyRowRain: {
+    color: '#A39C5B',
+    fontSize: 15,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  historyRowAmount: {
+    color: '#7E6B00',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  historyEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
   },
   emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
 
-  ctaCard: {
-    backgroundColor: '#13131A', borderRadius: 20, padding: 28,
-    borderWidth: 1, borderColor: '#1E1E2E', marginTop: 20,
+  noProtectionCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 48,
+    marginTop: 32,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#C0BD5F',
+    backgroundColor: '#FFFCCB',
   },
-  ctaTitle: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', marginBottom: 10 },
-  ctaSubtitle: { fontSize: 14, color: '#6B7280', lineHeight: 20, marginBottom: 24 },
-  ctaBtn: { backgroundColor: '#00E5A0', borderRadius: 14, height: 52, justifyContent: 'center', alignItems: 'center' },
-  ctaBtnText: { fontSize: 15, fontWeight: '700', color: '#0A0A0F' },
+  noProtectionIcon: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 48,
+    backgroundColor: '#F1EE68',
+    marginBottom: 24,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  noProtectionTitle: {
+    color: '#3B3A00',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.7,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  noProtectionSubtitle: {
+    maxWidth: 420,
+    color: '#696710',
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  noProtectionBtn: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 26,
+    backgroundColor: '#FFDF00',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  noProtectionBtnText: {
+    color: '#473D00',
+    fontSize: 15,
+    fontWeight: '800',
+  },
 });

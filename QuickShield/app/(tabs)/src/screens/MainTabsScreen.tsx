@@ -76,7 +76,7 @@ export default function MainTabsScreen() {
   const TABS: TabDefinition[] = [
     { key: 'home', label: t('tabs.home'), icon: 'home' },
     { key: 'flags', label: 'Flags', icon: 'flag' },
-    { key: 'premium', label: t('tabs.premium'), icon: 'diamond' },
+    { key: 'premium', label: t('tabs.premium'), icon: 'shield-checkmark' },
     { key: 'history', label: t('tabs.history'), icon: 'time' },
   ];
   const activeIndex = TABS.findIndex((tab) => tab.key === activeTab);
@@ -469,7 +469,6 @@ export default function MainTabsScreen() {
             {
               paddingBottom: Math.max(insets.bottom, 12),
               minHeight: width >= 768 ? 84 : 74,
-              maxWidth: width >= 768 ? 520 : undefined,
             },
           ]}
         >
@@ -488,7 +487,7 @@ export default function MainTabsScreen() {
                 <Ionicons
                   name={focused ? tab.icon : `${tab.icon}-outline` as keyof typeof Ionicons.glyphMap}
                   size={22}
-                  color={focused ? '#0A0A0F' : '#7A8597'}
+                  color={focused ? '#736400' : '#A8A29E'}
                 />
                 <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{tab.label}</Text>
               </TouchableOpacity>
@@ -514,9 +513,9 @@ const styles = StyleSheet.create({
   },
   tabBarWrap: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 10,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     zIndex: 50,
     elevation: 50,
@@ -525,38 +524,41 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-around',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingTop: 8,
-    borderRadius: 32,
-    backgroundColor: '#121A27',
-    borderWidth: 1.5,
-    borderColor: '#2A3649',
+    paddingTop: 10,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderTopWidth: 1,
+    borderColor: '#F3F1EA',
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000000',
-    shadowOpacity: 0.32,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 18,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 12,
   },
   tabButton: {
     flex: 1,
     minHeight: 56,
-    borderRadius: 24,
-    flexDirection: 'row',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 6,
+    paddingVertical: 7,
   },
   tabButtonActive: {
-    backgroundColor: '#00E5A0',
+    backgroundColor: '#FFFCCB',
   },
   tabLabel: {
-    color: '#7A8597',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#A8A29E',
+    fontSize: 12,
+    fontWeight: '600',
   },
   tabLabelActive: {
-    color: '#0A0A0F',
+    color: '#736400',
+    fontWeight: '800',
   },
 });

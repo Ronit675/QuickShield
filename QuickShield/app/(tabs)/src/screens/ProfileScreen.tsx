@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker, {
   type DateTimePickerEvent,
   DateTimePickerAndroid,
@@ -182,139 +184,160 @@ export default function ProfileScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
-            <Text style={styles.backBtnText}>{t('profile.back')}</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('profile.headerTitle')}</Text>
-          <Text style={styles.headerSubtitle}>{t('profile.headerSubtitle')}</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFBFF" />
 
-        <View style={styles.profileHero}>
-          <ProfileAvatar uri={profilePhoto} size={74} borderRadius={24} />
-          <View style={styles.profileHeroText}>
-            <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.profileMeta}>{user?.phone || user?.email || t('profile.addContactDetails')}</Text>
-          </View>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.back')}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={25} color="#736400" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('profile.headerTitle')}</Text>
+      </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>{t('profile.sectionPhotoTitle')}</Text>
-          <Text style={styles.helperCaption}>
-            {t('profile.sectionPhotoHint')}
-          </Text>
-
-          <View style={styles.photoRow}>
-            <ProfileAvatar uri={profilePhoto} size={88} borderRadius={28} />
-            <View style={styles.photoActions}>
+      <KeyboardAvoidingView
+        style={styles.keyboardArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.profileHero}>
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatarBorder}>
+                <ProfileAvatar uri={profilePhoto} size={96} borderRadius={48} />
+              </View>
               <TouchableOpacity
-                style={[styles.photoBtn, pickingPhoto && styles.photoBtnDisabled]}
+                style={styles.editPhotoBtn}
                 onPress={handlePickPhoto}
                 disabled={pickingPhoto || saving}
-                activeOpacity={0.85}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={profilePhoto ? t('profile.changePhoto') : t('profile.uploadPhoto')}
               >
                 {pickingPhoto ? (
-                  <ActivityIndicator color="#08110F" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.photoBtnText}>{profilePhoto ? t('profile.changePhoto') : t('profile.uploadPhoto')}</Text>
+                  <MaterialCommunityIcons name="pencil" size={15} color="#FFFFFF" />
                 )}
               </TouchableOpacity>
-              {profilePhoto && (
-                <TouchableOpacity
-                  style={styles.photoGhostBtn}
-                  onPress={handleRemovePhoto}
-                  disabled={saving}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.photoGhostBtnText}>{t('profile.useDefault')}</Text>
-                </TouchableOpacity>
-              )}
             </View>
+
+            <Text style={styles.profileName}>{displayName}</Text>
+            <View style={styles.profileMetaRow}>
+              <MaterialCommunityIcons name="phone-outline" size={17} color="#696710" />
+              <Text style={styles.profileMeta}>
+                {user?.phone || user?.email || t('profile.addContactDetails')}
+              </Text>
+            </View>
+            {profilePhoto && (
+              <TouchableOpacity
+                onPress={handleRemovePhoto}
+                disabled={saving}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Text style={styles.useDefaultText}>{t('profile.useDefault')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          <Text style={styles.label}>{t('profile.fullNameLabel')}</Text>
-          <TextInput
-            value={fullName}
-            onChangeText={setFullName}
-            placeholder={t('profile.fullNamePlaceholder')}
-            placeholderTextColor="#556070"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>{t('profile.dobLabel')}</Text>
-          <TouchableOpacity
-            style={styles.dateField}
-            onPress={openDobPicker}
-            activeOpacity={0.85}
-          >
-            <View style={styles.dateFieldTextWrap}>
-              <Text style={[styles.dateFieldText, !dateOfBirth && styles.dateFieldPlaceholder]}>
-                {formatDobForDisplay(dateOfBirth, dobLocale, t('profile.dobPlaceholder'))}
-              </Text>
-              <Text style={styles.dateFieldHint}>{t('profile.dobHint')}</Text>
-            </View>
-            <Text style={styles.dateFieldIcon}>▾</Text>
-          </TouchableOpacity>
-
-          {Platform.OS === 'ios' && showIosDobPicker && (
-            <View style={styles.iosDatePickerCard}>
-              <DateTimePicker
-                value={dateOfBirth ?? new Date('2000-01-01T00:00:00.000Z')}
-                mode="date"
-                display="inline"
-                maximumDate={new Date()}
-                onChange={handleDobChange}
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('profile.fullNameLabel')}</Text>
+              <TextInput
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder={t('profile.fullNamePlaceholder')}
+                placeholderTextColor="#96933F"
+                style={styles.input}
               />
-              <TouchableOpacity
-                style={styles.iosDateDoneBtn}
-                onPress={() => setShowIosDobPicker(false)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.iosDateDoneBtnText}>{t('profile.done')}</Text>
-              </TouchableOpacity>
             </View>
-          )}
 
-          {age !== null && (
-            <View style={styles.ageCard}>
-              <Text style={styles.ageLabel}>{t('profile.calculatedAge')}</Text>
-              <Text style={styles.ageValue}>{age} {t('profile.years')}</Text>
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('profile.emailLabel')}</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t('profile.emailPlaceholder')}
+                placeholderTextColor="#96933F"
+                style={[styles.input, isGoogleUser && styles.inputDisabled]}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!isGoogleUser}
+              />
+              {isGoogleUser && (
+                <Text style={styles.helperText}>
+                  {t('profile.googleEmailLocked')}
+                </Text>
+              )}
             </View>
-          )}
 
-          <Text style={styles.label}>{t('profile.addressLabel')}</Text>
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder={t('profile.addressPlaceholder')}
-            placeholderTextColor="#556070"
-            style={[styles.input, styles.textArea]}
-            multiline
-            textAlignVertical="top"
-          />
+            <View style={styles.dobRow}>
+              <View style={[styles.field, styles.dobField]}>
+                <Text style={styles.label}>{t('profile.dobLabel')}</Text>
+                <TouchableOpacity
+                  style={styles.dateField}
+                  onPress={openDobPicker}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[styles.dateFieldText, !dateOfBirth && styles.dateFieldPlaceholder]}
+                    numberOfLines={1}
+                  >
+                    {formatDobForDisplay(dateOfBirth, dobLocale, t('profile.dobPlaceholder'))}
+                  </Text>
+                  <MaterialCommunityIcons name="calendar-blank-outline" size={19} color="#736400" />
+                </TouchableOpacity>
+              </View>
 
-          <Text style={styles.label}>{t('profile.emailLabel')}</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder={t('profile.emailPlaceholder')}
-            placeholderTextColor="#556070"
-            style={[styles.input, isGoogleUser && styles.inputDisabled]}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!isGoogleUser}
-          />
-          {isGoogleUser && (
-            <Text style={styles.helperText}>
-              {t('profile.googleEmailLocked')}
-            </Text>
-          )}
+              <View style={[styles.field, styles.ageField]}>
+                <Text style={styles.label}>{t('profile.ageLabel')}</Text>
+                <View style={styles.ageCard}>
+                  <Text style={styles.ageValue}>{age ?? '--'}</Text>
+                </View>
+              </View>
+            </View>
+
+            {Platform.OS === 'ios' && showIosDobPicker && (
+              <View style={styles.iosDatePickerCard}>
+                <DateTimePicker
+                  value={dateOfBirth ?? new Date('2000-01-01T00:00:00.000Z')}
+                  mode="date"
+                  display="inline"
+                  maximumDate={new Date()}
+                  onChange={handleDobChange}
+                />
+                <TouchableOpacity
+                  style={styles.iosDateDoneBtn}
+                  onPress={() => setShowIosDobPicker(false)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.iosDateDoneBtnText}>{t('profile.done')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('profile.addressLabel')}</Text>
+              <TextInput
+                value={address}
+                onChangeText={setAddress}
+                placeholder={t('profile.addressPlaceholder')}
+                placeholderTextColor="#96933F"
+                style={[styles.input, styles.textArea]}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
 
           <TouchableOpacity
             style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
@@ -323,223 +346,204 @@ export default function ProfileScreen() {
             activeOpacity={0.85}
           >
             {saving ? (
-              <ActivityIndicator color="#08110F" />
+              <ActivityIndicator color="#5C5000" />
             ) : (
-              <Text style={styles.saveBtnText}>{t('profile.saveProfile')}</Text>
+              <>
+                <MaterialCommunityIcons name="check-circle-outline" size={22} color="#5C5000" />
+                <Text style={styles.saveBtnText}>{t('profile.saveProfile')}</Text>
+              </>
             )}
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#FFFBFF',
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 40,
+  keyboardArea: {
+    flex: 1,
+    backgroundColor: '#FFFBFF',
   },
   header: {
-    marginBottom: 24,
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFBFF',
   },
   backBtn: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#202634',
-    backgroundColor: '#111723',
-  },
-  backBtnText: {
-    color: '#D1D5DB',
-    fontSize: 13,
-    fontWeight: '600',
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '700',
+    color: '#736400',
+    fontSize: 20,
+    fontWeight: '800',
   },
-  headerSubtitle: {
-    color: '#7A8597',
-    fontSize: 14,
-    lineHeight: 20,
+  content: {
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 36,
   },
   profileHero: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 14,
+    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: '#FFFCCB',
+    marginBottom: 24,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  profileHeroText: {
-    flex: 1,
-    gap: 2,
-  },
-  profileName: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  profileMeta: {
-    color: '#7A8597',
-    fontSize: 13,
-  },
-  formCard: {
-    backgroundColor: '#11141B',
-    borderRadius: 22,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1C2432',
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  helperCaption: {
-    color: '#7A8597',
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4,
+  avatarWrap: {
+    position: 'relative',
     marginBottom: 14,
   },
-  photoRow: {
+  avatarBorder: {
+    borderRadius: 54,
+    borderWidth: 4,
+    borderColor: '#FFDF00',
+    padding: 2,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  editPhotoBtn: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FFFBFF',
+    backgroundColor: '#736400',
+  },
+  profileName: {
+    color: '#3B3A00',
+    fontSize: 23,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  profileMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-  },
-  photoActions: {
-    flex: 1,
-    gap: 10,
-  },
-  photoBtn: {
-    height: 44,
-    borderRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#00E5A0',
-    paddingHorizontal: 16,
+    gap: 6,
   },
-  photoBtnDisabled: {
-    opacity: 0.7,
-  },
-  photoBtnText: {
-    color: '#08110F',
+  profileMeta: {
+    color: '#696710',
     fontSize: 14,
-    fontWeight: '700',
-  },
-  photoGhostBtn: {
-    height: 42,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#273041',
-    backgroundColor: '#0B1017',
-    paddingHorizontal: 16,
-  },
-  photoGhostBtnText: {
-    color: '#D1D5DB',
-    fontSize: 13,
     fontWeight: '600',
+  },
+  useDefaultText: {
+    color: '#736400',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 9,
+    textDecorationLine: 'underline',
+  },
+  form: {
+    gap: 18,
+  },
+  field: {
+    gap: 8,
   },
   label: {
-    color: '#D1D5DB',
+    color: '#696710',
     fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 14,
+    fontWeight: '700',
+    paddingHorizontal: 4,
   },
   input: {
-    minHeight: 54,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2A3343',
-    backgroundColor: '#0B1017',
-    color: '#FFFFFF',
+    minHeight: 56,
+    borderRadius: 12,
+    backgroundColor: '#FFFCCB',
+    color: '#3B3A00',
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
   },
+  dobRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  dobField: {
+    flex: 1,
+  },
+  ageField: {
+    width: 92,
+  },
   dateField: {
-    minHeight: 58,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2A3343',
-    backgroundColor: '#0B1017',
+    minHeight: 56,
+    borderRadius: 12,
+    backgroundColor: '#FFFCCB',
     paddingHorizontal: 16,
-    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  dateFieldTextWrap: {
-    flex: 1,
-    gap: 4,
+    gap: 8,
   },
   dateFieldText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    flex: 1,
+    color: '#3B3A00',
+    fontSize: 14,
     fontWeight: '600',
   },
   dateFieldPlaceholder: {
-    color: '#556070',
+    color: '#96933F',
     fontWeight: '500',
   },
-  dateFieldHint: {
-    color: '#7A8597',
-    fontSize: 12,
-  },
-  dateFieldIcon: {
-    color: '#A8B0BF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 12,
-  },
   iosDatePickerCard: {
-    marginTop: 12,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#F4F6F9',
+    backgroundColor: '#FFFCCB',
   },
   iosDateDoneBtn: {
     height: 46,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#00E5A0',
+    backgroundColor: '#FFDF00',
   },
   iosDateDoneBtnText: {
-    color: '#08110F',
+    color: '#5C5000',
     fontSize: 14,
     fontWeight: '700',
   },
   ageCard: {
-    marginTop: 12,
-    borderRadius: 14,
-    backgroundColor: '#0F1F18',
+    minHeight: 56,
+    borderRadius: 12,
+    backgroundColor: 'rgba(241, 238, 104, 0.3)',
     borderWidth: 1,
-    borderColor: '#00E5A033',
-    padding: 14,
-    flexDirection: 'row',
+    borderColor: 'rgba(192, 189, 95, 0.3)',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  ageLabel: {
-    color: '#8BA798',
-    fontSize: 13,
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   ageValue: {
-    color: '#00E5A0',
+    color: '#3B3A00',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   inputDisabled: {
     opacity: 0.65,
@@ -548,25 +552,32 @@ const styles = StyleSheet.create({
     minHeight: 96,
   },
   helperText: {
-    color: '#7A8597',
+    color: '#696710',
     fontSize: 12,
-    marginTop: 8,
     lineHeight: 18,
+    paddingHorizontal: 4,
   },
   saveBtn: {
-    marginTop: 22,
-    height: 56,
-    borderRadius: 14,
+    height: 58,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#00E5A0',
+    gap: 9,
+    borderRadius: 12,
+    backgroundColor: '#FFDF00',
+    marginTop: 34,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 9,
+    elevation: 4,
   },
   saveBtnDisabled: {
     opacity: 0.65,
   },
   saveBtnText: {
-    color: '#08110F',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#5C5000',
+    fontSize: 17,
+    fontWeight: '800',
   },
 });
