@@ -30,7 +30,6 @@ import { stopBackgroundLocationTracking } from '../services/location';
 import ProfileAvatar from '../components/ProfileAvatar';
 import QuickShieldSidebar from '../components/QuickShieldSidebar';
 import RainDisruptionCard from '../components/RainDisruptionCard';
-import WeatherCard from '../components/WeatherCard';
 import { useLanguage } from '../directory/Languagecontext';
 import type { PolicySummary } from '../types/policy';
 import { isWithinWorkingAreaRadius } from '../hooks/useLocationIntegrityMonitor';
@@ -856,6 +855,10 @@ export default function HomeScreen({
           setProfileMenuVisible(false);
           router.push('/platform-connect');
         }}
+        onWeatherPress={() => {
+          setProfileMenuVisible(false);
+          router.push('/weather');
+        }}
         onSettingsPress={() => {
           setProfileMenuVisible(false);
           router.push('/settings');
@@ -1107,7 +1110,6 @@ export default function HomeScreen({
               </View>
             </View>
 
-            <WeatherCard />
           </>
         ) : policy?.status === 'active' ? (
           <>
@@ -1745,6 +1747,7 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
 
   activeProtectionSection: {
+    marginTop: 20,
     marginBottom: 18,
   },
   hiddenRainDisruptionSync: {
@@ -1754,7 +1757,8 @@ const styles = StyleSheet.create({
     color: '#3B3A00',
     fontSize: 18,
     fontWeight: '800',
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 18,
   },
   activeDisruptionPanel: {
     borderRadius: 12,

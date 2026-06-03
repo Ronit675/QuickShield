@@ -17,6 +17,7 @@ export default function TabLayout() {
           <Stack.Screen name="home" />
           <Stack.Screen name="profile" />
           <Stack.Screen name="platform-connect" />
+          <Stack.Screen name="weather" />
           <Stack.Screen name="create-policy" />
           <Stack.Screen name="settings" />
         </Stack>

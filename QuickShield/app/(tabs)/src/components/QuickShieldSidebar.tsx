@@ -22,6 +22,7 @@ type QuickShieldSidebarProps = {
   onClose: () => void;
   onProfilePress: () => void;
   onPlatformPress: () => void;
+  onWeatherPress: () => void;
   onSettingsPress: () => void;
   onSignOutPress: () => void;
 };
@@ -36,6 +37,7 @@ export default function QuickShieldSidebar({
   onClose,
   onProfilePress,
   onPlatformPress,
+  onWeatherPress,
   onSettingsPress,
   onSignOutPress,
 }: QuickShieldSidebarProps) {
@@ -108,6 +110,13 @@ export default function QuickShieldSidebar({
       hint: t('sidebar.connectPlatformHint'),
       icon: <MaterialCommunityIcons name="shield-link-variant-outline" size={22} color="#00E5A0" />,
       onPress: onPlatformPress,
+    },
+    {
+      key: 'weather',
+      label: t('sidebar.weather'),
+      hint: t('sidebar.weatherHint'),
+      icon: <Feather name="cloud-rain" size={20} color="#7DD3FC" />,
+      onPress: onWeatherPress,
     },
     {
       key: 'settings',
