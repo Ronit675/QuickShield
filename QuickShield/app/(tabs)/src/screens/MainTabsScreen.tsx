@@ -351,6 +351,7 @@ export default function MainTabsScreen() {
     return () => {
       clearTimeout(syncTimeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     appStateSyncKey,
     isAppStateReady,

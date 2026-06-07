@@ -9,15 +9,6 @@ type Params = {
   day: string;
 };
 
-const HOURLY_TEMPLATE = [
-  { time: '8 AM', icon: 'cloud', label: 'Cloudy', prob: '10%', temp: '14°' },
-  { time: '10 AM', icon: 'rainy', label: 'Light Rain', prob: '45%', temp: '15°' },
-  { time: '12 PM', icon: 'rainy_heavy', label: 'Showers', prob: '70%', temp: '16°' },
-  { time: '2 PM', icon: 'thunderstorm', label: 'Storms', prob: '85%', temp: '17°', highRisk: true },
-  { time: '3 PM', icon: 'thunderstorm', label: 'Heavy Storms', prob: '95%', temp: '17°', peak: true },
-  { time: '5 PM', icon: 'rainy_heavy', label: 'Heavy Rain', prob: '80%', temp: '16°' },
-  { time: '8 PM', icon: 'partly_cloudy_night', label: 'Cloudy', prob: '20%', temp: '14°' },
-];
 
 const DAY_META: Record<string, { day: string; date: string; title?: string }> = {
   mon: { day: 'Mon', date: 'Oct 23' },
@@ -45,7 +36,7 @@ export default function DayDetails() {
       try {
         const data = await loadMockWeatherForecast();
         if (mounted) setBundle(data);
-      } catch (err) {
+      } catch {
         // ignore for now
       } finally {
         if (mounted) setLoading(false);

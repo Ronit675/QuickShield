@@ -239,7 +239,7 @@ const RainDrop = ({ index }: { index: number }) => {
   const translateY = useSharedValue(-20);
   const opacity = useSharedValue(0);
 
-  const left = `${(index * 7.7) % 100}%`;
+  const left = `${(index * 7.7) % 100}%` as `${number}%`;
   const duration = 800 + Math.random() * 1000;
   const delay = Math.random() * 2000;
 
@@ -533,12 +533,27 @@ export default function HomeScreen({
     && !needsPlatformConnectForMiniTimer
     && policy?.status === 'active'
     && miniIsTracking;
+  const shouldShowInactiveDisruptionDesign =
+    !isClaimsFeatureDisabled
+    && !needsPlatformConnectForMiniTimer
+    && policy?.status !== 'active'
+    && miniIsTracking;
+  const shouldShowPausedPremiumDesign =
+    isPremiumTab
+    && policy?.status === 'active'
+    && isClaimsFeatureDisabled
+    && !isRedFlagPause;
   const miniWorkingSlotLabel = user?.workingShiftLabel || user?.workingTimeSlots?.[0] || 'Not assigned';
   const miniAccruedClaimAmount = policy?.status === 'active'
     ? (policy.coveragePerDay / 24) * (miniElapsedMs / 3600000)
     : 0;
   const isActiveProtectionDashboard = shouldShowActiveDisruptionDesign;
-  const isLightDashboardState = isPremiumEmptyState || isActiveProtectionDashboard;
+  const isLightDashboardState =
+    isPremiumEmptyState ||
+    isActiveProtectionDashboard ||
+    shouldShowInactiveDisruptionDesign ||
+    shouldShowPausedPremiumDesign ||
+    (!isPremiumTab && policy?.status === 'active');
   const activeProtectionLocationLabel = [user?.city, user?.serviceZone]
     .filter((value): value is string => Boolean(value?.trim()))
     .join(', ') || 'Mumbai, Maharashtra';
@@ -822,13 +837,8 @@ export default function HomeScreen({
   };
 
   const handleRedeem = useCallback(() => {
-    Alert.alert(
-      hasRedeemableBalance ? t('home.redeemReceivedTitle') : t('home.noBalanceTitle'),
-      hasRedeemableBalance
-        ? t('home.redeemReadyMessage')
-        : t('home.redeemEmptyMessage'),
-    );
-  }, [hasRedeemableBalance, t]);
+    router.push('/wallet');
+  }, []);
 
   const handleGetProtected = useCallback(() => {
     if (user?.platformConnectionStatus !== 'verified') {
@@ -958,6 +968,7 @@ export default function HomeScreen({
         displayName={displayName}
         contactLine={contactLine}
         platformLabel={platformLabel}
+        profilePhoto={user?.profilePhoto}
         onClose={() => setProfileMenuVisible(false)}
         onProfilePress={() => {
           setProfileMenuVisible(false);
@@ -979,6 +990,7 @@ export default function HomeScreen({
           setProfileMenuVisible(false);
           void handleSignOut();
         }}
+        onWalletPress={handleRedeem}
       />
 
       {/* Top bar */}
@@ -994,7 +1006,9 @@ export default function HomeScreen({
             <Ionicons name="menu" size={22} color="#3B3A00" />
           </TouchableOpacity>
 
-          <Text style={styles.activeDashboardBrandText}>QuickShield</Text>
+          <Text style={styles.activeDashboardBrandText}>
+            {isPremiumTab ? 'Insurance' : 'QuickShield'}
+          </Text>
 
           <TouchableOpacity
             onPress={() => router.push('/profile')}
@@ -1082,7 +1096,7 @@ export default function HomeScreen({
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor={isLightDashboardState ? '#736400' : '#00E5A0'} />}
       >
-        {isClaimsFeatureDisabled && (
+        {isClaimsFeatureDisabled && !shouldShowPausedPremiumDesign && (
           <View style={styles.imBackCard}>
             <View style={styles.imBackHeader}>
               <Ionicons name="pause-circle" size={18} color="#FDE68A" />
@@ -1148,7 +1162,64 @@ export default function HomeScreen({
               />
             </View>
 
-            <Text style={styles.activeDashboardGreeting}>Hello, Rider!</Text>
+            <View style={[styles.greetingHeaderRow, { paddingTop: 4, paddingBottom: 8 }]}>
+              <Text style={styles.activeDashboardGreeting}>Hello, Rider!</Text>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                activeOpacity={0.8}
+                style={[
+                  styles.compactFlagCheck,
+                  locationIntegrity.flagLevel === 'red'
+                    ? styles.compactFlagCheckRed
+                    : locationIntegrity.flagLevel === 'yellow'
+                      ? styles.compactFlagCheckYellow
+                      : locationIntegrity.flagLevel === 'green'
+                        ? styles.compactFlagCheckGreen
+                        : styles.compactFlagCheckSafe
+                ]}
+              >
+                {locationIntegrity.isChecking ? (
+                  <ActivityIndicator size="small" color="#BE2D06" style={{ transform: [{ scale: 0.8 }] }} />
+                ) : (
+                  <Ionicons
+                    name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
+                    size={14}
+                    color={
+                      locationIntegrity.flagLevel === 'red'
+                        ? '#BE2D06'
+                        : locationIntegrity.flagLevel === 'yellow'
+                          ? '#736400'
+                          : locationIntegrity.flagLevel === 'green'
+                            ? '#5E6A32'
+                            : '#5E6A32'
+                    }
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.compactFlagLabel,
+                    {
+                      color:
+                        locationIntegrity.flagLevel === 'red'
+                          ? '#BE2D06'
+                          : locationIntegrity.flagLevel === 'yellow'
+                            ? '#736400'
+                            : locationIntegrity.flagLevel === 'green'
+                              ? '#5E6A32'
+                              : '#5E6A32'
+                    }
+                  ]}
+                >
+                  {locationIntegrity.flagLevel === 'red'
+                    ? 'Red Flag'
+                    : locationIntegrity.flagLevel === 'yellow'
+                      ? 'Yellow Flag'
+                      : locationIntegrity.flagLevel === 'green'
+                        ? 'Recovered'
+                        : 'Safe'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               activeOpacity={0.9}
@@ -1258,264 +1329,659 @@ export default function HomeScreen({
             </View>
           </View>
         ) : !isPremiumTab ? (
-          <>
-            <View
-              style={[
-                styles.miniTimerCard,
-                isClaimsFeatureDisabled
-                  ? styles.miniTimerCardDisabled
-                  : miniIsTracking
-                    ? styles.miniTimerCardActive
-                    : styles.miniTimerCardIdle,
-              ]}
-            >
-              <View style={styles.miniTimerHeader}>
-                <Text style={styles.miniTimerEyebrow}>{t('home.activeDisruption')}</Text>
-                <Text style={styles.miniTimerCTA}>
-                  {isClaimsFeatureDisabled
-                    ? 'Disabled'
-                    : needsPlatformConnectForMiniTimer
-                      ? t('home.required')
-                      : t('home.open')}
+          policy?.status === 'active' ? (
+            <View style={styles.redesignedDashboardContainer}>
+              <View style={[styles.greetingHeaderRow, { paddingHorizontal: 0, paddingTop: 4, paddingBottom: 8 }]}>
+                <Text style={styles.redesignedDashboardGreeting}>
+                  {t('home.greeting')} 🧑‍✈️
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.compactFlagCheck,
+                    locationIntegrity.flagLevel === 'red'
+                      ? styles.compactFlagCheckRed
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? styles.compactFlagCheckYellow
+                        : locationIntegrity.flagLevel === 'green'
+                          ? styles.compactFlagCheckGreen
+                          : styles.compactFlagCheckSafe
+                  ]}
+                >
+                  {locationIntegrity.isChecking ? (
+                    <ActivityIndicator size="small" color="#BE2D06" style={{ transform: [{ scale: 0.8 }] }} />
+                  ) : (
+                    <Ionicons
+                      name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
+                      size={14}
+                      color={
+                        locationIntegrity.flagLevel === 'red'
+                          ? '#BE2D06'
+                          : locationIntegrity.flagLevel === 'yellow'
+                            ? '#736400'
+                            : locationIntegrity.flagLevel === 'green'
+                              ? '#5E6A32'
+                              : '#5E6A32'
+                      }
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.compactFlagLabel,
+                      {
+                        color:
+                          locationIntegrity.flagLevel === 'red'
+                            ? '#BE2D06'
+                            : locationIntegrity.flagLevel === 'yellow'
+                              ? '#736400'
+                              : locationIntegrity.flagLevel === 'green'
+                                ? '#5E6A32'
+                                : '#5E6A32'
+                      }
+                    ]}
+                  >
+                    {locationIntegrity.flagLevel === 'red'
+                      ? 'Red Flag'
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? 'Yellow Flag'
+                        : locationIntegrity.flagLevel === 'green'
+                          ? 'Recovered'
+                          : 'Safe'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Status Card (Action Yellow Primary) */}
+              <View style={styles.redesignedHeroContainer}>
+                <ImageBackground
+                  source={{
+                    uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2U5Sf4dgKQFkilOX_RzY4Pua4gFo_fHEFkEsINt3WXjPkNxDUpDQnFWFjt4xmFawGNGsWBHibwGWOrhfY91g-eG0n7WfpvZoXtCl6LUoIzefHLS1ENvw2f5KKauJz6ITFXkFqO3Z0EqRE7NT0uX06clVOd9SsChDbampMDwApu8NFr2XzHeSZBaUyml7zRWc-PWFJ1o8a_wiqdvqBtnOb4EsCF3I2tIGwYvF75nqhymQStY3CNi9dVUE643HzxejfYNV9zCt1vhnU',
+                  }}
+                  style={styles.redesignedHeroBg}
+                  imageStyle={styles.redesignedHeroImg}
+                >
+                  <View style={styles.redesignedHeroOverlay} />
+                  <View style={styles.redesignedHeroContent}>
+                    <View style={styles.redesignedHeroTop}>
+                      <View style={styles.statusDotRow}>
+                        <View style={styles.pulseStatusDot} />
+                        <Text style={styles.statusLabelText}>STATUS</Text>
+                      </View>
+                      <Text style={styles.statusValueText}>Shield Active</Text>
+                      <Text style={styles.statusDescText}>
+                        You are currently protected
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.viewDetailsBtn}
+                      onPress={onOpenPremium}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.viewDetailsBtnText}>View Details</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ImageBackground>
+              </View>
+
+              {/* Weather Widget */}
+              <View style={styles.redesignedWeatherWidget}>
+                <View style={styles.weatherLeft}>
+                  <View style={styles.weatherIconBox}>
+                    <Ionicons name="rainy" size={20} color="#736400" />
+                  </View>
+                  <View style={styles.weatherTextColumn}>
+                    <Text style={styles.weatherWidgetTitle}>
+                      {miniWeatherSummary || 'Rain expected soon'}
+                    </Text>
+                    <Text style={styles.weatherWidgetSubtitle}>
+                      Don&apos;t forget your gear. Local weather: 68°F
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.fullForecastBtn}
+                  onPress={() => router.push('/weather')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.fullForecastText}>Full Forecast</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#736400" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Bento Stats Grid */}
+              <View style={styles.bentoStatsGrid}>
+                {/* Covered Hours Bento */}
+                <View style={styles.bentoStatCard}>
+                  <View style={styles.bentoStatTop}>
+                    <View style={styles.bentoIconBox}>
+                      <Ionicons name="timer" size={16} color="#736400" />
+                    </View>
+                    <View style={styles.weeklyBadge}>
+                      <Text style={styles.weeklyBadgeText}>WEEKLY</Text>
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={styles.bentoStatLabel}>Covered</Text>
+                    <View style={styles.bentoValRow}>
+                      <Text style={styles.bentoStatVal}>
+                        {claims.length > 0
+                          ? (claims.length * (user?.workingHours ?? 8)).toFixed(1)
+                          : '32.5'}
+                      </Text>
+                      <Text style={styles.bentoStatUnit}> hrs</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Wallet Bento Card */}
+                <TouchableOpacity
+                  style={[styles.bentoStatCard, styles.bentoWalletCard]}
+                  onPress={handleRedeem}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.bentoStatTop}>
+                    <Text style={styles.bentoWalletLabel}>Wallet Card</Text>
+                    <Ionicons name="wallet" size={16} color="#5C5000" />
+                  </View>
+                  <View>
+                    <Text style={styles.bentoWalletVal}>
+                      {formatCurrency(totalPaidOut)}
+                    </Text>
+                    <Text style={styles.bentoWalletSub}>Next: Tuesday</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Recent Activity Section */}
+              <View style={styles.activitySection}>
+                <View style={styles.activitySectionHeader}>
+                  <Text style={styles.activitySectionTitle}>Recent Activity</Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({ pathname: '/home', params: { tab: 'history' } })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.seeAllActivityBtn}>See All</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.activityList}>
+                  {/* Activity Item 1: Weekly Payout */}
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityItemLeft}>
+                      <View style={styles.activityItemIconBox}>
+                        <Ionicons name="card" size={18} color="#736400" />
+                      </View>
+                      <View>
+                        <Text style={styles.activityItemTitle}>Weekly Payout</Text>
+                        <Text style={styles.activityItemSubtitle}>
+                          Oct 24 • Sent to Wallet
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.activityItemAmount}>+₹128.00</Text>
+                  </View>
+
+                  {/* Activity Item 2: Shift Coverage */}
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityItemLeft}>
+                      <View
+                        style={[
+                          styles.activityItemIconBox,
+                          { backgroundColor: '#EFFEB7' },
+                        ]}
+                      >
+                        <Ionicons name="checkmark-circle" size={18} color="#45501B" />
+                      </View>
+                      <View>
+                        <Text style={styles.activityItemTitle}>Shift Coverage</Text>
+                        <Text style={styles.activityItemSubtitle}>
+                          Oct 23 • 8.5 Hours logged
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.activityStatusPill}>
+                      <Text style={styles.activityStatusText}>Verified</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ) : shouldShowInactiveDisruptionDesign ? (
+            <View style={styles.redesignedInactiveDashboardContainer}>
+              <View style={[styles.greetingHeaderRow, { paddingHorizontal: 0, paddingTop: 4, paddingBottom: 8 }]}>
+                <Text style={styles.redesignedDashboardGreeting}>
+                  {t('home.greeting')} 🧑‍✈️
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.compactFlagCheck,
+                    locationIntegrity.flagLevel === 'red'
+                      ? styles.compactFlagCheckRed
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? styles.compactFlagCheckYellow
+                        : locationIntegrity.flagLevel === 'green'
+                          ? styles.compactFlagCheckGreen
+                          : styles.compactFlagCheckSafe
+                  ]}
+                >
+                  {locationIntegrity.isChecking ? (
+                    <ActivityIndicator size="small" color="#BE2D06" style={{ transform: [{ scale: 0.8 }] }} />
+                  ) : (
+                    <Ionicons
+                      name={locationIntegrity.isFlagged ? 'flag' : 'flag-outline'}
+                      size={14}
+                      color={
+                        locationIntegrity.flagLevel === 'red'
+                          ? '#BE2D06'
+                          : locationIntegrity.flagLevel === 'yellow'
+                            ? '#736400'
+                            : locationIntegrity.flagLevel === 'green'
+                              ? '#5E6A32'
+                              : '#5E6A32'
+                      }
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.compactFlagLabel,
+                      {
+                        color:
+                          locationIntegrity.flagLevel === 'red'
+                            ? '#BE2D06'
+                            : locationIntegrity.flagLevel === 'yellow'
+                              ? '#736400'
+                              : locationIntegrity.flagLevel === 'green'
+                                ? '#5E6A32'
+                                : '#5E6A32'
+                      }
+                    ]}
+                  >
+                    {locationIntegrity.flagLevel === 'red'
+                      ? 'Red Flag'
+                      : locationIntegrity.flagLevel === 'yellow'
+                        ? 'Yellow Flag'
+                        : locationIntegrity.flagLevel === 'green'
+                          ? 'Recovered'
+                          : 'Safe'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Hero Section: No Active Protection */}
+              <View style={styles.redesignedInactiveHeroContainer}>
+                <ImageBackground
+                  source={{
+                    uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAIP8p0LM3XBzmhdJsqOGNFuZzh9YJalEAeaXS_ZHIH_GOVW-avJPA7MKxiRNt_aAFBlfoS2hFmm3qWen-djXUmLHbdq8kjC3iQENFugygj-htk3Np0nJZ-18EWcFWasCBOcWGj9DW9qiD4mLcm4-beySyFAMPSqDuFfEPuub8NVuvG3EfFUsIJmI_RUz4ycBgviJzM6iMHXoES1FqJAJdE59QCW72snJDhoGmuej4q3P4JvrVLQr4pBXzsLbLr9i8rxiOxTSaP249',
+                  }}
+                  style={styles.redesignedInactiveHeroBg}
+                  imageStyle={styles.redesignedInactiveHeroImg}
+                >
+                  <View style={styles.redesignedInactiveHeroOverlay} />
+                  <View style={styles.redesignedInactiveHeroContent}>
+                    <View style={styles.redesignedInactiveHeroTop}>
+                      <View style={styles.inactiveStatusDotRow}>
+                        <View style={styles.inactiveWarningBadge}>
+                          <Ionicons name="warning" size={12} color="#FFFFFF" />
+                        </View>
+                        <Text style={styles.inactiveStatusLabelText}>NO ACTIVE PROTECTION</Text>
+                      </View>
+                      <Text style={styles.inactiveStatusValueText}>You&apos;re currently unprotected.</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.browseProtectionBtn}
+                      onPress={handleGetProtected}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.browseProtectionBtnText}>Browse Protection</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#473D00" />
+                    </TouchableOpacity>
+                  </View>
+                </ImageBackground>
+              </View>
+
+              {/* Weather Warning Card */}
+              <View style={styles.redesignedWeatherWarningWidget}>
+                <View style={styles.weatherWarningLeft}>
+                  <View style={styles.weatherWarningIconBox}>
+                    <Ionicons name="rainy" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.weatherWarningTextColumn}>
+                    <Text style={styles.weatherWarningTitle}>
+                      Weather Warning
+                    </Text>
+                    <Text style={styles.weatherWarningSubtitle}>
+                      Heavy rain expected in 20 mins. Stay safe and get covered.
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#696710" />
+              </View>
+
+              {/* Stats Bento Grid */}
+              <View style={styles.bentoStatsGrid}>
+                {/* Covered Hours Bento (0 hrs) */}
+                <View style={styles.bentoStatCard}>
+                  <View style={styles.bentoStatTop}>
+                    <View style={styles.bentoIconBox}>
+                      <Ionicons name="timer" size={16} color="#736400" />
+                    </View>
+                    <View style={styles.weeklyBadge}>
+                      <Text style={styles.weeklyBadgeText}>WEEKLY</Text>
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={styles.bentoStatLabel}>Covered</Text>
+                    <View style={styles.bentoValRow}>
+                      <Text style={styles.bentoStatVal}>0</Text>
+                      <Text style={styles.bentoStatUnit}> hrs</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* YTD Earned Bento Card */}
+                <View style={[styles.bentoStatCard, styles.bentoEarnedCard]}>
+                  <View style={styles.bentoStatTop}>
+                    <View style={styles.bentoIconBox}>
+                      <Ionicons name="wallet" size={16} color="#736400" />
+                    </View>
+                    <View style={styles.ytdBadge}>
+                      <Text style={styles.ytdBadgeText}>YTD</Text>
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={styles.bentoStatLabel}>Earned</Text>
+                    <Text style={styles.bentoStatVal}>
+                      {formatCurrency(totalPaidOut || 1240)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Recent Activity Section */}
+              <View style={styles.activitySection}>
+                <View style={styles.activitySectionHeader}>
+                  <Text style={styles.activitySectionTitle}>Recent Activity</Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({ pathname: '/home', params: { tab: 'history' } })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.seeAllActivityBtn}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.activityList}>
+                  {/* Activity Item 1: Weekly Payout */}
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityItemLeft}>
+                      <View style={styles.activityItemIconBox}>
+                        <Ionicons name="wallet" size={18} color="#736400" />
+                      </View>
+                      <View>
+                        <Text style={styles.activityItemTitle}>Weekly Payout</Text>
+                        <Text style={styles.activityItemSubtitle}>
+                          Completed • Oct 12
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.activityItemAmount}>+₹420.00</Text>
+                  </View>
+
+                  {/* Activity Item 2: Safety Reward */}
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityItemLeft}>
+                      <View
+                        style={[
+                          styles.activityItemIconBox,
+                          { backgroundColor: '#EFFEB7' },
+                        ]}
+                      >
+                        <Ionicons name="shield-checkmark" size={18} color="#45501B" />
+                      </View>
+                      <View>
+                        <Text style={styles.activityItemTitle}>Safety Reward</Text>
+                        <Text style={styles.activityItemSubtitle}>
+                          Credited • Oct 10
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.activityItemAmount, { color: '#5E6A32' }]}>+₹15.00</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <>
+              <View
+                style={[
+                  styles.miniTimerCard,
+                  isClaimsFeatureDisabled
+                    ? styles.miniTimerCardDisabled
+                    : miniIsTracking
+                      ? styles.miniTimerCardActive
+                      : styles.miniTimerCardIdle,
+                ]}
+              >
+                <View style={styles.miniTimerHeader}>
+                  <Text style={styles.miniTimerEyebrow}>{t('home.activeDisruption')}</Text>
+                  <Text style={styles.miniTimerCTA}>
+                    {isClaimsFeatureDisabled
+                      ? 'Disabled'
+                      : needsPlatformConnectForMiniTimer
+                        ? t('home.required')
+                        : t('home.open')}
+                  </Text>
+                </View>
+
+                {isClaimsFeatureDisabled ? (
+                  <>
+                     <Text style={styles.miniTimerValue}>Paused</Text>
+                     <Text numberOfLines={3} style={styles.miniTimerSummary}>
+                       {miniWeatherSummary}
+                     </Text>
+                  </>
+                ) : needsPlatformConnectForMiniTimer ? (
+                  <>
+                     <Text style={styles.miniTimerValue}>{t('home.connectPlatformShort')}</Text>
+                     <Text numberOfLines={2} style={styles.miniTimerSummary}>
+                       {miniWeatherSummary}
+                     </Text>
+                     <TouchableOpacity
+                       activeOpacity={0.9}
+                       style={styles.miniTimerConnectBtn}
+                       onPress={() => router.push('/platform-connect')}
+                       accessibilityRole="button"
+                       accessibilityLabel={t('home.connectPlatformA11y')}
+                     >
+                       <Text style={styles.miniTimerConnectBtnText}>{t('home.connectQcommerce')}</Text>
+                     </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={onOpenPremium}
+                    disabled={isClaimsFeatureDisabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('home.openPremiumA11y')}
+                  >
+                    <Text style={styles.miniTimerValue}>
+                      {miniTrackingLoading
+                        ? t('home.checking')
+                        : policy?.status !== 'active'
+                          ? t('home.noPremiumTitle')
+                          : miniIsTracking
+                            ? formatDuration(miniElapsedMs)
+                            : t('home.noActiveDisruption')}
+                    </Text>
+
+                    <Text numberOfLines={1} style={styles.miniTimerSummary}>
+                      {miniWeatherSummary}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.walletCard}>
+                <View style={styles.walletHeader}>
+                  <View>
+                    <Text style={styles.walletEyebrow}>Wallet card</Text>
+                    <Text style={styles.walletTitle}>Total balance</Text>
+                  </View>
+                  <View style={styles.walletChip}>
+                    <Text style={styles.walletChipText}>{hasRedeemableBalance ? 'Ready to redeem' : 'No balance yet'}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.walletBalance}>{formatCurrency(totalPaidOut)}</Text>
+                <Text style={styles.walletCaption}>{t('home.walletCaption')}</Text>
+
+                <View style={styles.walletFooter}>
+                  <View style={styles.walletMetaBlock}>
+                    <Text style={styles.walletMetaLabel}>Claims credited</Text>
+                    <Text style={styles.walletMetaValue}>{claims.filter((claim) => claim.status === 'paid' || claim.status === 'auto_approved').length}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.redeemBtn, !hasRedeemableBalance && styles.redeemBtnDisabled]}
+                    onPress={handleRedeem}
+                    activeOpacity={0.88}
+                    accessibilityRole="button"
+                    accessibilityLabel="Redeem wallet balance"
+                  >
+                    <Text style={styles.redeemBtnText}>Redeem</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )
+        ) : policy?.status === 'active' ? (
+          shouldShowPausedPremiumDesign ? (
+            <View style={styles.pausedPremiumDashboardContainer}>
+              {/* Timer Card (Paused) */}
+              <View style={styles.pausedPremiumTimerCard}>
+                <View style={styles.pausedPremiumTimerHeader}>
+                  <View>
+                    <Text style={styles.pausedPremiumCategory}>Rain Disruption</Text>
+                    <Text style={styles.pausedPremiumTitle}>Timer Card</Text>
+                  </View>
+                  <View style={styles.pausedPremiumBadge}>
+                    <Text style={styles.pausedPremiumBadgeText}>Paused</Text>
+                  </View>
+                </View>
+
+                <View style={styles.pausedPremiumValueWrap}>
+                  <Text style={styles.pausedPremiumValue}>Paused</Text>
+                  <Text style={styles.pausedPremiumDesc}>
+                    Claims timer is paused until {selectedReturnDateLabel || 'tomorrow'}. Tap I&apos;m Back on Home after returning.
+                  </Text>
+                </View>
+
+                <View style={styles.pausedPremiumGrid}>
+                  <View style={styles.pausedPremiumGridItem}>
+                    <Text style={styles.pausedPremiumGridItemLabel}>Working slot</Text>
+                    <Text style={styles.pausedPremiumGridItemValue}>{miniWorkingSlotLabel}</Text>
+                  </View>
+                  <View style={styles.pausedPremiumGridItem}>
+                    <Text style={styles.pausedPremiumGridItemLabel}>Claim</Text>
+                    <Text style={styles.pausedPremiumGridItemValue}>Paused</Text>
+                  </View>
+                  <View style={[styles.pausedPremiumGridItem, { width: '100%' }]}>
+                    <Text style={styles.pausedPremiumGridItemLabel}>Rain rate</Text>
+                    <Text style={styles.pausedPremiumGridItemValue}>
+                      {miniRainfallRateMmPerHr !== null ? `${miniRainfallRateMmPerHr.toFixed(1)} mm/hr` : 'Unavailable'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.pausedPremiumButtonRow}>
+                  <TouchableOpacity
+                    style={[styles.pausedPremiumButtonPrimary, isCheckingImBack && styles.pausedPremiumButtonDisabled]}
+                    activeOpacity={0.88}
+                    onPress={handleImBack}
+                    disabled={isCheckingImBack}
+                  >
+                    {isCheckingImBack ? (
+                      <ActivityIndicator color="#473D00" />
+                    ) : (
+                      <Text style={styles.pausedPremiumButtonPrimaryText}>I&apos;m Back</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.pausedPremiumButtonSecondary, isRaisingQuery && styles.pausedPremiumButtonDisabled]}
+                    activeOpacity={0.88}
+                    onPress={handleRaiseQuery}
+                    disabled={isRaisingQuery || hasRaisedQuery}
+                  >
+                    {isRaisingQuery ? (
+                      <ActivityIndicator color="#3B3A00" />
+                    ) : (
+                      <Text style={styles.pausedPremiumButtonSecondaryText}>
+                        {hasRaisedQuery ? 'Query Raised' : 'Raise Query'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.pausedPremiumTimerFooterCaption}>
+                  Timer paused until {selectedReturnDateLabel || 'tomorrow'}. Claims calculation will resume once you tap I&apos;m Back within the 25 km working area.
                 </Text>
               </View>
 
-              {isClaimsFeatureDisabled ? (
-                <>
-                  <Text style={styles.miniTimerValue}>Paused</Text>
-                  <Text numberOfLines={3} style={styles.miniTimerSummary}>
-                    {miniWeatherSummary}
-                  </Text>
-                </>
-              ) : needsPlatformConnectForMiniTimer ? (
-                <>
-                  <Text style={styles.miniTimerValue}>{t('home.connectPlatformShort')}</Text>
-                  <Text numberOfLines={2} style={styles.miniTimerSummary}>
-                    {miniWeatherSummary}
-                  </Text>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={styles.miniTimerConnectBtn}
-                    onPress={() => router.push('/platform-connect')}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('home.connectPlatformA11y')}
-                  >
-                    <Text style={styles.miniTimerConnectBtnText}>{t('home.connectQcommerce')}</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={onOpenPremium}
-                  disabled={isClaimsFeatureDisabled}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('home.openPremiumA11y')}
-                >
-                  <Text style={styles.miniTimerValue}>
-                    {miniTrackingLoading
-                      ? t('home.checking')
-                      : policy?.status !== 'active'
-                        ? t('home.noPremiumTitle')
-                        : miniIsTracking
-                          ? formatDuration(miniElapsedMs)
-                          : t('home.noActiveDisruption')}
-                  </Text>
-
-                  <Text numberOfLines={1} style={styles.miniTimerSummary}>
-                    {miniWeatherSummary}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.walletCard}>
-              <View style={styles.walletHeader}>
-                <View>
-                  <Text style={styles.walletEyebrow}>Wallet card</Text>
-                  <Text style={styles.walletTitle}>Total balance</Text>
+              {/* Rain Shield Active Card */}
+              <View style={styles.rainShieldPanel}>
+                <View style={styles.rainShieldHeader}>
+                  <Text style={styles.rainShieldTitle}>Rain Shield Active</Text>
+                  <View style={styles.rainShieldBadge}>
+                    <Text style={styles.rainShieldBadgeText}>Active</Text>
+                  </View>
                 </View>
-                <View style={styles.walletChip}>
-                  <Text style={styles.walletChipText}>{hasRedeemableBalance ? 'Ready to redeem' : 'No balance yet'}</Text>
+
+                <View style={styles.rainShieldStatsRow}>
+                  <View style={styles.rainShieldStat}>
+                    <Text style={styles.rainShieldStatLabel}>Remaining</Text>
+                    <Text style={styles.rainShieldStatValue}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</Text>
+                  </View>
+                  <View style={styles.rainShieldStatDivider} />
+                  <View style={styles.rainShieldStat}>
+                    <Text style={styles.rainShieldStatLabel}>Weekly</Text>
+                    <Text style={styles.rainShieldStatValue}>{formatCurrency(policy.weeklyPremium)}</Text>
+                  </View>
+                  <View style={styles.rainShieldStatDivider} />
+                  <View style={styles.rainShieldStat}>
+                    <Text style={styles.rainShieldStatLabel}>Paid Out</Text>
+                    <Text style={styles.rainShieldStatValue}>{formatCurrency(totalPaidOut)}</Text>
+                  </View>
                 </View>
-              </View>
 
-              <Text style={styles.walletBalance}>{formatCurrency(totalPaidOut)}</Text>
-              <Text style={styles.walletCaption}>{t('home.walletCaption')}</Text>
-
-              <View style={styles.walletFooter}>
-                <View style={styles.walletMetaBlock}>
-                  <Text style={styles.walletMetaLabel}>Claims credited</Text>
-                  <Text style={styles.walletMetaValue}>{claims.filter((claim) => claim.status === 'paid' || claim.status === 'auto_approved').length}</Text>
+                <View style={styles.rainShieldCoverage}>
+                  <Text style={styles.rainShieldCoverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
+                  <Text style={styles.rainShieldCoverageCaption}>(100% of Avg. Daily Income)</Text>
+                  <Text style={styles.rainShieldCoverageLabel}>Per Day Coverage</Text>
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.redeemBtn, !hasRedeemableBalance && styles.redeemBtnDisabled]}
-                  onPress={handleRedeem}
-                  activeOpacity={0.88}
-                  accessibilityRole="button"
-                  accessibilityLabel="Redeem wallet balance"
+                  style={[styles.rainShieldRemoveBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                  onPress={confirmRemoveActivePolicy}
+                  disabled={removingPolicy}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.redeemBtnText}>Redeem</Text>
+                  {removingPolicy ? (
+                    <ActivityIndicator color="#5C5000" />
+                  ) : (
+                    <>
+                      <Ionicons name="close-circle-outline" size={18} color="#5C5000" />
+                      <Text style={styles.rainShieldRemoveBtnText}>Remove current subscription</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
-            </View>
 
-          </>
-        ) : policy?.status === 'active' ? (
-          <>
-            {shouldShowActiveDisruptionDesign ? (
-              <View style={styles.activeProtectionSection}>
-                <View style={styles.hiddenRainDisruptionSync}>
-                  <RainDisruptionCard
-                    isActive={isActive}
-                    isPaused={isClaimsFeatureDisabled}
-                    pausedUntilLabel={selectedReturnDateLabel}
-                    onPolicyRefresh={syncPolicy}
-                    policy={policy}
-                    user={user}
-                  />
-                </View>
-
-                <Text style={styles.activeProtectionSectionTitle}>Active Protection</Text>
-
-                <View style={styles.activeDisruptionPanel}>
-                  <View style={styles.activeDisruptionHeader}>
-                    <Text style={styles.activeDisruptionTitle}>Active Disruption</Text>
-                    <View style={styles.rainingNowBadge}>
-                      <Ionicons name="water" size={13} color="#B92902" />
-                      <Text style={styles.rainingNowBadgeText}>Raining Now</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.activeMetricGrid}>
-                    <View style={styles.activeMetricTile}>
-                      <Text style={styles.activeMetricLabel}>Disruption Duration</Text>
-                      <Text style={styles.activeMetricValueLarge}>{formatClockDuration(miniElapsedMs)}</Text>
-                    </View>
-                    <View style={styles.activeMetricTile}>
-                      <Text style={styles.activeMetricLabel}>Working Slot</Text>
-                      <Text numberOfLines={1} style={styles.activeMetricValue}>{miniWorkingSlotLabel}</Text>
-                    </View>
-                    <View style={styles.activeMetricTile}>
-                      <Text style={styles.activeMetricLabel}>Accrued Claims</Text>
-                      <Text style={styles.activeMetricValuePrimary}>{formatCurrency(miniAccruedClaimAmount)}</Text>
-                    </View>
-                    <View style={styles.activeMetricTile}>
-                      <Text style={styles.activeMetricLabel}>Current Rain Rate</Text>
-                      <Text style={styles.activeMetricValue}>
-                        {miniRainfallRateMmPerHr !== null ? `${miniRainfallRateMmPerHr.toFixed(1)} mm/hr` : 'Unavailable'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.rainShieldPanel}>
-                  <View style={styles.rainShieldHeader}>
-                    <Text style={styles.rainShieldTitle}>Rain Shield Active</Text>
-                    <View style={styles.rainShieldBadge}>
-                      <Text style={styles.rainShieldBadgeText}>Active</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.rainShieldStatsRow}>
-                    <View style={styles.rainShieldStat}>
-                      <Text style={styles.rainShieldStatLabel}>Remaining</Text>
-                      <Text style={styles.rainShieldStatValue}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</Text>
-                    </View>
-                    <View style={styles.rainShieldStatDivider} />
-                    <View style={styles.rainShieldStat}>
-                      <Text style={styles.rainShieldStatLabel}>Weekly</Text>
-                      <Text style={styles.rainShieldStatValue}>{formatCurrency(policy.weeklyPremium)}</Text>
-                    </View>
-                    <View style={styles.rainShieldStatDivider} />
-                    <View style={styles.rainShieldStat}>
-                      <Text style={styles.rainShieldStatLabel}>Paid Out</Text>
-                      <Text style={styles.rainShieldStatValue}>{formatCurrency(totalPaidOut)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.rainShieldCoverage}>
-                    <Text style={styles.rainShieldCoverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
-                    <Text style={styles.rainShieldCoverageCaption}>(100% of Avg. Daily Income)</Text>
-                    <Text style={styles.rainShieldCoverageLabel}>Per Day Coverage</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.rainShieldRemoveBtn, removingPolicy && styles.removePolicyBtnDisabled]}
-                    onPress={confirmRemoveActivePolicy}
-                    disabled={removingPolicy}
-                    activeOpacity={0.85}
-                  >
-                    {removingPolicy ? (
-                      <ActivityIndicator color="#5C5000" />
-                    ) : (
-                      <>
-                        <Ionicons name="close-circle-outline" size={18} color="#5C5000" />
-                        <Text style={styles.rainShieldRemoveBtnText}>Remove current subscription</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <>
-                <RainDisruptionCard
-                  isActive={isActive}
-                  isPaused={isClaimsFeatureDisabled}
-                  pausedUntilLabel={selectedReturnDateLabel}
-                  onPolicyRefresh={syncPolicy}
-                  policy={policy}
-                  user={user}
-                />
-
-                <View style={styles.policyCard}>
-                  <View style={styles.policyCardHeader}>
-                    <Text style={styles.policyCardTitle}>Active protection</Text>
-                    <View style={styles.activeBadge}>
-                      <View style={styles.activeDot} />
-                      <Text style={styles.activeBadgeText}>Active</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.coverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
-                  <Text style={styles.coverageLabel}>per day coverage</Text>
-
-                  <View style={styles.divider} />
-
-                  <View style={styles.statsRow}>
-                    <View style={styles.stat}>
-                      <Text style={styles.statVal}>{daysLeft}</Text>
-                      <Text style={styles.statLabel}>Days left</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.stat}>
-                      <Text style={styles.statVal}>{formatCurrency(policy.weeklyPremium)}</Text>
-                      <Text style={styles.statLabel}>Weekly premium</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.stat}>
-                      <Text style={[styles.statVal, { color: '#00E5A0' }]}>{formatCurrency(totalPaidOut)}</Text>
-                      <Text style={styles.statLabel}>Paid out</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.removePolicyBtn, removingPolicy && styles.removePolicyBtnDisabled]}
-                    onPress={confirmRemoveActivePolicy}
-                    disabled={removingPolicy}
-                    activeOpacity={0.85}
-                  >
-                    {removingPolicy ? (
-                      <ActivityIndicator color="#FCA5A5" />
-                    ) : (
-                      <Text style={styles.removePolicyBtnText}>Remove current calculation</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {shouldShowActiveDisruptionDesign ? (
+              {/* Protect your next ride Banner */}
               <View style={styles.protectNextRideBanner}>
                 <View style={styles.protectNextRideGlow} />
                 <View style={styles.protectNextRideContent}>
@@ -1542,56 +2008,269 @@ export default function HomeScreen({
                   </View>
                 </View>
               </View>
-            ) : (
-              <View style={styles.autoRenewCard}>
-                <View style={styles.autoRenewHeader}>
-                  <View style={styles.autoRenewTextWrap}>
-                    <Text style={styles.autoRenewTitle}>Auto renew premium</Text>
-                    <Text style={styles.autoRenewSubtitle}>
-                      Automatically renew this weekly premium at cycle end.
-                    </Text>
+
+              {/* Hourly Credit History */}
+              <Text style={styles.historyTitle}>Hourly Credit History</Text>
+              {claims.length === 0 ? (
+                <View style={styles.historyCard}>
+                  <View style={styles.historyEmptyState}>
+                    <Text style={styles.emptyText}>No credits recorded yet.</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.historyCard}>
+                  {claims.map((claim, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.historyRow,
+                        i === claims.length - 1 && styles.historyRowLast,
+                      ]}
+                    >
+                      <View style={styles.historyRowCopy}>
+                        <Text style={styles.historyRowTime}>{formatHistoryWindow(claim.createdAt)}</Text>
+                        <Text style={styles.historyRowRain}>
+                          {claim.triggerType === 'rain' ? 'RAIN CREDIT' : TRIGGER_LABELS[claim.triggerType] ?? claim.triggerType}
+                        </Text>
+                      </View>
+                      <Text style={styles.historyRowAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <>
+              {shouldShowActiveDisruptionDesign ? (
+                <View style={styles.activeProtectionSection}>
+                  <View style={styles.hiddenRainDisruptionSync}>
+                    <RainDisruptionCard
+                      isActive={isActive}
+                      isPaused={isClaimsFeatureDisabled}
+                      pausedUntilLabel={selectedReturnDateLabel}
+                      onPolicyRefresh={syncPolicy}
+                      policy={policy}
+                      user={user}
+                    />
                   </View>
 
-                  <AnimatedAutoRenewSwitch
-                    value={autoRenewEnabled}
-                    onValueChange={(nextValue) => {
-                      void handleToggleAutoRenew(nextValue);
-                    }}
-                    disabled={updatingAutoRenew}
-                  />
-                </View>
-              </View>
-            )}
+                  <Text style={styles.activeProtectionSectionTitle}>Active Protection</Text>
 
-            <Text style={styles.historyTitle}>Hourly Credit History</Text>
-            {claims.length === 0 ? (
-              <View style={styles.historyCard}>
-                <View style={styles.historyEmptyState}>
-                  <Text style={styles.emptyText}>No credits recorded yet.</Text>
+                  <View style={styles.activeDisruptionPanel}>
+                    <View style={styles.activeDisruptionHeader}>
+                      <Text style={styles.activeDisruptionTitle}>Active Disruption</Text>
+                      <View style={styles.rainingNowBadge}>
+                        <Ionicons name="water" size={13} color="#B92902" />
+                        <Text style={styles.rainingNowBadgeText}>Raining Now</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.activeMetricGrid}>
+                      <View style={styles.activeMetricTile}>
+                        <Text style={styles.activeMetricLabel}>Disruption Duration</Text>
+                        <Text style={styles.activeMetricValueLarge}>{formatClockDuration(miniElapsedMs)}</Text>
+                      </View>
+                      <View style={styles.activeMetricTile}>
+                        <Text style={styles.activeMetricLabel}>Working Slot</Text>
+                        <Text numberOfLines={1} style={styles.activeMetricValue}>{miniWorkingSlotLabel}</Text>
+                      </View>
+                      <View style={styles.activeMetricTile}>
+                        <Text style={styles.activeMetricLabel}>Accrued Claims</Text>
+                        <Text style={styles.activeMetricValuePrimary}>{formatCurrency(miniAccruedClaimAmount)}</Text>
+                      </View>
+                      <View style={styles.activeMetricTile}>
+                        <Text style={styles.activeMetricLabel}>Current Rain Rate</Text>
+                        <Text style={styles.activeMetricValue}>
+                          {miniRainfallRateMmPerHr !== null ? `${miniRainfallRateMmPerHr.toFixed(1)} mm/hr` : 'Unavailable'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.rainShieldPanel}>
+                    <View style={styles.rainShieldHeader}>
+                      <Text style={styles.rainShieldTitle}>Rain Shield Active</Text>
+                      <View style={styles.rainShieldBadge}>
+                        <Text style={styles.rainShieldBadgeText}>Active</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.rainShieldStatsRow}>
+                      <View style={styles.rainShieldStat}>
+                        <Text style={styles.rainShieldStatLabel}>Remaining</Text>
+                        <Text style={styles.rainShieldStatValue}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</Text>
+                      </View>
+                      <View style={styles.rainShieldStatDivider} />
+                      <View style={styles.rainShieldStat}>
+                        <Text style={styles.rainShieldStatLabel}>Weekly</Text>
+                        <Text style={styles.rainShieldStatValue}>{formatCurrency(policy.weeklyPremium)}</Text>
+                      </View>
+                      <View style={styles.rainShieldStatDivider} />
+                      <View style={styles.rainShieldStat}>
+                        <Text style={styles.rainShieldStatLabel}>Paid Out</Text>
+                        <Text style={styles.rainShieldStatValue}>{formatCurrency(totalPaidOut)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.rainShieldCoverage}>
+                      <Text style={styles.rainShieldCoverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
+                      <Text style={styles.rainShieldCoverageCaption}>(100% of Avg. Daily Income)</Text>
+                      <Text style={styles.rainShieldCoverageLabel}>Per Day Coverage</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.rainShieldRemoveBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                      onPress={confirmRemoveActivePolicy}
+                      disabled={removingPolicy}
+                      activeOpacity={0.85}
+                    >
+                      {removingPolicy ? (
+                        <ActivityIndicator color="#5C5000" />
+                      ) : (
+                        <>
+                          <Ionicons name="close-circle-outline" size={18} color="#5C5000" />
+                          <Text style={styles.rainShieldRemoveBtnText}>Remove current subscription</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ) : (
-              <View style={styles.historyCard}>
-                {claims.map((claim, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.historyRow,
-                      i === claims.length - 1 && styles.historyRowLast,
-                    ]}
-                  >
-                    <View style={styles.historyRowCopy}>
-                      <Text style={styles.historyRowTime}>{formatHistoryWindow(claim.createdAt)}</Text>
-                      <Text style={styles.historyRowRain}>
-                        {claim.triggerType === 'rain' ? 'RAIN CREDIT' : TRIGGER_LABELS[claim.triggerType] ?? claim.triggerType}
+              ) : (
+                <>
+                  <RainDisruptionCard
+                    isActive={isActive}
+                    isPaused={isClaimsFeatureDisabled}
+                    pausedUntilLabel={selectedReturnDateLabel}
+                    onPolicyRefresh={syncPolicy}
+                    policy={policy}
+                    user={user}
+                  />
+
+                  <View style={styles.policyCard}>
+                    <View style={styles.policyCardHeader}>
+                      <Text style={styles.policyCardTitle}>Active protection</Text>
+                      <View style={styles.activeBadge}>
+                        <View style={styles.activeDot} />
+                        <Text style={styles.activeBadgeText}>Active</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.coverageAmount}>{formatCurrency(policy.coveragePerDay)}</Text>
+                    <Text style={styles.coverageLabel}>per day coverage</Text>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.statsRow}>
+                      <View style={styles.stat}>
+                        <Text style={styles.statVal}>{daysLeft}</Text>
+                        <Text style={styles.statLabel}>Days left</Text>
+                      </View>
+                      <View style={styles.statDivider} />
+                      <View style={styles.stat}>
+                        <Text style={styles.statVal}>{formatCurrency(policy.weeklyPremium)}</Text>
+                        <Text style={styles.statLabel}>Weekly premium</Text>
+                      </View>
+                      <View style={styles.statDivider} />
+                      <View style={styles.stat}>
+                        <Text style={[styles.statVal, { color: '#00E5A0' }]}>{formatCurrency(totalPaidOut)}</Text>
+                        <Text style={styles.statLabel}>Paid out</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.removePolicyBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                      onPress={confirmRemoveActivePolicy}
+                      disabled={removingPolicy}
+                      activeOpacity={0.85}
+                    >
+                      {removingPolicy ? (
+                        <ActivityIndicator color="#FCA5A5" />
+                      ) : (
+                        <Text style={styles.removePolicyBtnText}>Remove current calculation</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {shouldShowActiveDisruptionDesign ? (
+                <View style={styles.protectNextRideBanner}>
+                  <View style={styles.protectNextRideGlow} />
+                  <View style={styles.protectNextRideContent}>
+                    <Text style={styles.protectNextRideTitle}>Protect your next ride</Text>
+                    <Text style={styles.protectNextRideSubtitle}>Instant activation for unplanned commutes.</Text>
+
+                    <View style={styles.protectNextRideAutoRenew}>
+                      <View style={styles.protectNextRideAutoRenewText}>
+                        <Text style={styles.protectNextRideAutoRenewTitle}>Auto-renew premium</Text>
+                        <Text style={styles.protectNextRideAutoRenewSubtitle}>
+                          Automatically renew this weekly premium at cycle end.
+                        </Text>
+                      </View>
+
+                      <AnimatedAutoRenewSwitch
+                        value={autoRenewEnabled}
+                        onValueChange={(nextValue) => {
+                          void handleToggleAutoRenew(nextValue);
+                        }}
+                        disabled={updatingAutoRenew}
+                        trackColors={{ on: '#C8BB1A', off: '#D9CF42' }}
+                        thumbColors={{ on: '#FFFFFF', off: '#FFFFFF' }}
+                      />
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.autoRenewCard}>
+                  <View style={styles.autoRenewHeader}>
+                    <View style={styles.autoRenewTextWrap}>
+                      <Text style={styles.autoRenewTitle}>Auto renew premium</Text>
+                      <Text style={styles.autoRenewSubtitle}>
+                        Automatically renew this weekly premium at cycle end.
                       </Text>
                     </View>
-                    <Text style={styles.historyRowAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
+
+                    <AnimatedAutoRenewSwitch
+                      value={autoRenewEnabled}
+                      onValueChange={(nextValue) => {
+                        void handleToggleAutoRenew(nextValue);
+                      }}
+                      disabled={updatingAutoRenew}
+                    />
                   </View>
-                ))}
-              </View>
-            )}
-          </>
+                </View>
+              )}
+
+              <Text style={styles.historyTitle}>Hourly Credit History</Text>
+              {claims.length === 0 ? (
+                <View style={styles.historyCard}>
+                  <View style={styles.historyEmptyState}>
+                    <Text style={styles.emptyText}>No credits recorded yet.</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.historyCard}>
+                  {claims.map((claim, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.historyRow,
+                        i === claims.length - 1 && styles.historyRowLast,
+                      ]}
+                    >
+                      <View style={styles.historyRowCopy}>
+                        <Text style={styles.historyRowTime}>{formatHistoryWindow(claim.createdAt)}</Text>
+                        <Text style={styles.historyRowRain}>
+                          {claim.triggerType === 'rain' ? 'RAIN CREDIT' : TRIGGER_LABELS[claim.triggerType] ?? claim.triggerType}
+                        </Text>
+                      </View>
+                      <Text style={styles.historyRowAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )
         ) : (
           <View style={styles.noProtectionCard}>
             <View style={styles.noProtectionIcon}>
@@ -2019,7 +2698,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   activeDashboardContent: {
-    paddingTop: 16,
+    paddingTop: 0,
     paddingBottom: 10,
   },
   activeDashboardGreeting: {
@@ -2028,7 +2707,6 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontWeight: '900',
     letterSpacing: -0.4,
-    marginBottom: 14,
   },
   activeWeatherHero: {
     height: 256,
@@ -2987,4 +3665,629 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  redesignedDashboardContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+    backgroundColor: '#FFFBFF',
+  },
+  redesignedDashboardGreeting: {
+    color: '#3B3A00',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  redesignedHeroContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
+  redesignedHeroBg: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    minHeight: 180,
+    justifyContent: 'flex-end',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  redesignedHeroImg: {
+    resizeMode: 'cover',
+  },
+  redesignedHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  redesignedHeroContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    padding: 16,
+    zIndex: 1,
+  },
+  redesignedHeroTop: {
+    flex: 1,
+    marginRight: 12,
+  },
+  statusDotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  pulseStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFDF00',
+  },
+  statusLabelText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  statusValueText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  statusDescText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  viewDetailsBtn: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewDetailsBtnText: {
+    color: '#473D00',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  redesignedWeatherWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFCCB',
+    borderColor: '#C0BD5F',
+    borderWidth: 1,
+    borderRadius: 16,
+    marginHorizontal: 0,
+    marginVertical: 12,
+    padding: 16,
+  },
+  weatherLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  weatherIconBox: {
+    backgroundColor: '#ECE942',
+    borderRadius: 20,
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  weatherTextColumn: {
+    flex: 1,
+  },
+  weatherWidgetTitle: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  weatherWidgetSubtitle: {
+    color: '#696710',
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  fullForecastBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  fullForecastText: {
+    color: '#736400',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bentoStatsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingHorizontal: 0,
+    paddingVertical: 8,
+  },
+  bentoStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFCCB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.3)',
+    padding: 16,
+    aspectRatio: 1.0,
+    justifyContent: 'space-between',
+  },
+  bentoStatTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  bentoIconBox: {
+    backgroundColor: 'rgba(255, 223, 0, 0.2)',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weeklyBadge: {
+    backgroundColor: 'rgba(255, 223, 0, 0.15)',
+    borderRadius: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  weeklyBadgeText: {
+    color: '#736400',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  bentoStatLabel: {
+    color: '#696710',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  bentoValRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  bentoStatVal: {
+    color: '#3B3A00',
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  bentoStatUnit: {
+    color: '#3B3A00',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bentoWalletCard: {
+    backgroundColor: '#FFDF00',
+    borderWidth: 0,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bentoWalletLabel: {
+    color: '#5C5000',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  bentoWalletVal: {
+    color: '#5C5000',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  bentoWalletSub: {
+    color: 'rgba(92, 80, 0, 0.8)',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  activitySection: {
+    marginTop: 20,
+    paddingHorizontal: 0,
+  },
+  activitySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  activitySectionTitle: {
+    color: '#3B3A00',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  seeAllActivityBtn: {
+    color: '#736400',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  activityList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F3F1EA',
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F1EA',
+  },
+  activityItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  activityItemIconBox: {
+    backgroundColor: '#EFFEB7',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activityItemTitle: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  activityItemSubtitle: {
+    color: '#696710',
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  activityItemAmount: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  activityStatusPill: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  activityStatusText: {
+    color: '#473D00',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  redesignedInactiveDashboardContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+    backgroundColor: '#FFFBFF',
+  },
+  redesignedInactiveHeroContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
+  redesignedInactiveHeroBg: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    minHeight: 220,
+    justifyContent: 'flex-end',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  redesignedInactiveHeroImg: {
+    resizeMode: 'cover',
+  },
+  redesignedInactiveHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  redesignedInactiveHeroContent: {
+    padding: 20,
+    zIndex: 1,
+  },
+  redesignedInactiveHeroTop: {
+    marginBottom: 16,
+  },
+  inactiveStatusDotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  inactiveWarningBadge: {
+    backgroundColor: '#BE2D06',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inactiveStatusLabelText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  inactiveStatusValueText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  browseProtectionBtn: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  browseProtectionBtnText: {
+    color: '#473D00',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  redesignedWeatherWarningWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(249, 86, 48, 0.08)',
+    borderColor: 'rgba(249, 86, 48, 0.15)',
+    borderWidth: 1,
+    borderRadius: 16,
+    marginHorizontal: 0,
+    marginVertical: 12,
+    padding: 16,
+  },
+  weatherWarningLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  weatherWarningIconBox: {
+    backgroundColor: '#BE2D06',
+    borderRadius: 20,
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  weatherWarningTextColumn: {
+    flex: 1,
+  },
+  weatherWarningTitle: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  weatherWarningSubtitle: {
+    color: '#696710',
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  ytdBadge: {
+    backgroundColor: 'rgba(94, 106, 50, 0.15)',
+    borderRadius: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  ytdBadgeText: {
+    color: '#5E6A32',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  bentoEarnedCard: {
+    backgroundColor: '#F7F376',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.3)',
+  },
+  greetingHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  compactFlagCheck: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 6,
+  },
+  compactFlagCheckSafe: {
+    backgroundColor: '#EFFEB7',
+    borderColor: '#C0BD5F',
+  },
+  compactFlagCheckGreen: {
+    backgroundColor: '#EFFEB7',
+    borderColor: '#C0BD5F',
+  },
+  compactFlagCheckYellow: {
+    backgroundColor: '#FFFCCB',
+    borderColor: '#C0BD5F',
+  },
+  compactFlagCheckRed: {
+    backgroundColor: 'rgba(249, 86, 48, 0.1)',
+    borderColor: 'rgba(249, 86, 48, 0.25)',
+  },
+  compactFlagLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  pausedPremiumDashboardContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+    backgroundColor: '#FFFBFF',
+  },
+  pausedPremiumTimerCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.3)',
+    backgroundColor: '#FFFCCB',
+    padding: 24,
+    gap: 20,
+    marginBottom: 16,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  pausedPremiumTimerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  pausedPremiumCategory: {
+    color: '#736400',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  pausedPremiumTitle: {
+    color: '#3B3A00',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  pausedPremiumBadge: {
+    backgroundColor: 'rgba(92, 80, 0, 0.16)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  pausedPremiumBadgeText: {
+    color: '#5C5000',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  pausedPremiumValueWrap: {
+    gap: 8,
+  },
+  pausedPremiumValue: {
+    color: '#3B3A00',
+    fontSize: 44,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  pausedPremiumDesc: {
+    color: '#696710',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  pausedPremiumGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  pausedPremiumGridItem: {
+    width: '48%',
+    backgroundColor: 'rgba(92, 80, 0, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.2)',
+    padding: 14,
+  },
+  pausedPremiumGridItemLabel: {
+    color: '#69671099',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  pausedPremiumGridItemValue: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pausedPremiumButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  pausedPremiumButtonPrimary: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 10,
+    backgroundColor: '#FFDF00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  pausedPremiumButtonPrimaryText: {
+    color: '#473D00',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pausedPremiumButtonSecondary: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#3B3A0033',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pausedPremiumButtonSecondaryText: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pausedPremiumButtonDisabled: {
+    opacity: 0.65,
+  },
+  pausedPremiumTimerFooterCaption: {
+    color: '#696710b3',
+    fontSize: 11,
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
 });
+

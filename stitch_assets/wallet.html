@@ -1,0 +1,136 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QuickShield - Wallet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"surface-container-highest": "#f1ee68", "on-background": "#3b3a00", "tertiary-fixed-dim": "#e1efaa", "secondary-fixed": "#ece942", "secondary-container": "#ece942", "error-dim": "#b92902", surface: "#fffbff", secondary: "#696700", "on-error-container": "#520c00", "on-tertiary": "#ffffff", "secondary-dim": "#5c5b00", "surface-container-high": "#f7f376", "on-tertiary-fixed": "#45501b", "surface-bright": "#fffbff", "on-tertiary-container": "#57622c", "primary-fixed-dim": "#efd100", "tertiary-container": "#effeb7", "surface-container": "#fcf983", tertiary: "#5e6a32", "surface-variant": "#f1ee68", "primary-dim": "#665800", "on-primary-container": "#5c5000", "on-tertiary-fixed-variant": "#616d35", "on-surface-variant": "#696710", "outline-variant": "#c0bd5f", outline: "#86842c", "surface-container-lowest": "#ffffff", "inverse-on-surface": "#a3a146", background: "#fffbff", "inverse-surface": "#0f0f00", "primary-container": "#ffdf00", "error-container": "#f95630", "secondary-fixed-dim": "#ddda33", "on-primary": "#ffffff", "primary-fixed": "#ffdf00", "on-secondary-container": "#565400", "on-primary-fixed-variant": "#675900", "surface-dim": "#ebe85b", error: "#be2d06", "on-secondary": "#ffffff", "on-secondary-fixed-variant": "#605e00", "inverse-primary": "#ffdf00", "surface-tint": "#736400", "surface-container-low": "#fffccb", "on-secondary-fixed": "#424100", "on-primary-fixed": "#473d00", "on-surface": "#3b3a00", "tertiary-dim": "#525d27", primary: "#736400", "tertiary-fixed": "#effeb7", "on-error": "#ffffff"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {headline: ["Domine"], display: ["Domine"], body: ["Inter"], label: ["Inter"]}, fontSize: {}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- Top Bar: Contextual Header for Sub-page -->
+<header class="sticky top-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-surface dark:bg-surface-dim shadow-sm">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-200 text-primary">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline text-headline-sm font-bold text-on-surface">Wallet</h1>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a smiling man in his 30s with a clean-cut appearance. The background is a soft, warm neutral tone that complements the vibrant light-mode UI design. High-end portrait lighting creates a bright and welcoming atmosphere, aligning with the Radiant Vibrant aesthetic of the application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_TvEHB-m4yViQXQHOWJ8CADWqCPhxiS4LTdBFG3CHy6Ltv0Q4CAz7mGztGrsg_2Ck1eY-ct7_nMZFJLaoOLEOajdPFiEHfjle7DCf-V_YF56Cx41PI5gv7rtv8V7nDSl_gdUqxHr62uXVgHt47qMZHdSSRhkUwuuTFQXzyVLyOj16YM06Zkngk589Gu_3jbDwbP5K-R4j8tqwBo7vC9p_EPeLm4W4e6a3WC_76SuJnhLaw78Hl0438bSjfZHjh7ClhvALnOeUfJdg">
+</div>
+</header>
+<main class="max-w-md mx-auto px-6 py-8 space-y-8">
+<!-- Balance Card: High Contrast Bento-style -->
+<section class="relative overflow-hidden bg-primary-container text-on-primary-container p-6 rounded-xl shadow-lg border border-primary/10">
+<div class="relative z-10">
+<p class="font-label text-label-sm uppercase tracking-wider font-semibold opacity-80">Total Balance</p>
+<h2 class="font-headline text-4xl font-bold mt-1 tracking-tight">$1,240.50</h2>
+<div class="mt-8 flex justify-between items-end">
+<div>
+<p class="font-label text-label-sm font-medium opacity-70">Pending Payout</p>
+<p class="font-headline text-xl font-semibold mt-0.5">$320.00</p>
+</div>
+<div class="bg-white/20 p-2 rounded-lg backdrop-blur-md">
+<span class="material-symbols-outlined text-3xl">account_balance_wallet</span>
+</div>
+</div>
+</div>
+<!-- Decorative background element -->
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-secondary-fixed/30 rounded-full blur-3xl"></div>
+</section>
+<!-- Quick Actions: Horizontal Layout -->
+<section class="grid grid-cols-3 gap-4">
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="font-label text-xs font-bold text-on-surface-variant">Withdraw</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">send_money</span>
+</div>
+<span class="font-label text-xs font-bold text-on-surface-variant">Transfer</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">history</span>
+</div>
+<span class="font-label text-xs font-bold text-on-surface-variant">History</span>
+</button>
+</section>
+<!-- Recent Activity: Semantic List -->
+<section class="space-y-4">
+<div class="flex justify-between items-center">
+<h3 class="font-headline text-lg font-bold text-on-surface">Recent Activity</h3>
+<button class="text-primary font-label text-sm font-bold">View All</button>
+</div>
+<div class="space-y-3">
+<!-- Activity Item 1 -->
+<div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined text-xl">shield</span>
+</div>
+<div class="flex-1">
+<h4 class="font-body text-sm font-bold text-on-surface">Rain Shield Payout</h4>
+<p class="font-label text-xs text-on-surface-variant">Oct 24, 2023</p>
+</div>
+<div class="text-right">
+<p class="font-headline text-sm font-bold text-secondary">+$145.00</p>
+<span class="inline-block px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary text-[10px] font-bold uppercase">Completed</span>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-xl">trending_up</span>
+</div>
+<div class="flex-1">
+<h4 class="font-body text-sm font-bold text-on-surface">Weekly Earnings</h4>
+<p class="font-label text-xs text-on-surface-variant">Oct 22, 2023</p>
+</div>
+<div class="text-right">
+<p class="font-headline text-sm font-bold text-secondary">+$450.20</p>
+<span class="inline-block px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary text-[10px] font-bold uppercase">Completed</span>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex items-center gap-4 p-4 bg-white rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-error-container/20 flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-xl">account_balance</span>
+</div>
+<div class="flex-1">
+<h4 class="font-body text-sm font-bold text-on-surface">Withdrawal to Bank</h4>
+<p class="font-label text-xs text-on-surface-variant">Oct 20, 2023</p>
+</div>
+<div class="text-right">
+<p class="font-headline text-sm font-bold text-on-surface">-$200.00</p>
+<span class="inline-block px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-tight">Pending</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Feature Promo: Asymmetric Bento Card -->
+<section class="grid grid-cols-2 gap-4">
+</section>
+</main>
+<!-- Bottom Navigation Bar (Shared Component Implementation) -->
+</body></html>

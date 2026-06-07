@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,8 +8,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  SafeAreaView,
+  Image,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -21,11 +25,35 @@ import {
 import { getRainDisruptionTrackingState } from '../services/rain-disruption.service';
 import type { PolicyClaim, PolicySummary } from '../types/policy';
 
-const PLATFORMS = [
-  { id: 'zepto', label: 'Zepto', tint: '#A855F7' },
-  { id: 'blinkit', label: 'Blinkit', tint: '#F59E0B' },
-  { id: 'swiggy', label: 'Swiggy', tint: '#FF6B35' },
-  { id: 'jio_mart', label: 'Jio Mart', tint: '#EF4444' },
+const PLATFORMS_CONFIG = [
+  {
+    id: 'blinkit',
+    label: 'Blinkit',
+    icon: 'cart-outline',
+    logoUrl: null,
+    tint: '#F59E0B',
+  },
+  {
+    id: 'zepto',
+    label: 'Zepto',
+    icon: 'bicycle-outline',
+    logoUrl: null,
+    tint: '#A855F7',
+  },
+  {
+    id: 'swiggy',
+    label: 'Swiggy',
+    icon: 'restaurant-outline',
+    logoUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBN0naqqhRAKCEWNqUz5tNbNreyqiLryM_pIV2bdTXRrGvJwsBEdm0sVqg3n2u-wX2NynrfQmGD0ACVt2YogbWfnQ5S2iYyqdKMy-3HWz-G485K97WbgM6JtRDa0e_YRt_7tFHdW1h2FsinGEQgLUKm2Trkl3He1MCROibWqLWnRZA1BBWozyhafkn-OaIsQqvCbTLDpOM6ZV2su7tkKNZq4khA2NRCwAiniYQGhmEptuouTqJF7cCMy007X0SnB26cLGwhyNA-VEwc',
+    tint: '#FF6B35',
+  },
+  {
+    id: 'jio_mart',
+    label: 'Jio Mart',
+    icon: 'storefront-outline',
+    logoUrl: null,
+    tint: '#EF4444',
+  },
 ];
 
 const formatPlatformName = (platform: string | null) => {
@@ -52,41 +80,52 @@ const formatCurrency = (value: number) =>
 
 export default function PlatformConnectScreen() {
   const { user, setUser } = useAuth();
-  const [selectedPlatform, setSelectedPlatform] = useState(user?.platform ?? null);
-  const [updatingPlatform, setUpdatingPlatform] = useState(false);
-  const [connectingPlatform, setConnectingPlatform] = useState(false);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const [connectingPlatformId, setConnectingPlatformId] = useState<string | null>(null);
   const [disconnectingPlatform, setDisconnectingPlatform] = useState(false);
   const [isShiftExpanded, setIsShiftExpanded] = useState(false);
 
-  const hasPlatformChanged = selectedPlatform !== user?.platform;
-  const selectedPlatformLabel = useMemo(
-    () => formatPlatformName(selectedPlatform),
-    [selectedPlatform],
-  );
+  const currentPlatformId = user?.platform;
+  const hasWorkingShift = typeof user?.workingHours === 'number' && !!user?.workingShiftLabel;
+
   const workingZone = user?.serviceZone
     ? user.serviceZone
         .split('-')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ')
     : 'Not selected';
+
   const workingTimeSlots = user?.workingTimeSlots ?? [];
-  const hasWorkingShift = typeof user?.workingHours === 'number' && !!user?.workingShiftLabel;
   const visibleTimeSlots = isShiftExpanded ? workingTimeSlots : workingTimeSlots.slice(0, 4);
   const hiddenSlotCount = Math.max(0, workingTimeSlots.length - visibleTimeSlots.length);
-  const isConnectDisabledForPlatformChange = !hasWorkingShift && hasPlatformChanged;
 
   const fetchActivePolicy = async () => {
     const activePolicyResponse = await api.get('/policy/active');
     return activePolicyResponse.data as PolicySummary | null;
   };
 
-  const handleConnect = async () => {
+  const handleConnect = async (platformId: string) => {
     if (!user) {
       return;
     }
 
-    setConnectingPlatform(true);
+    setConnectingPlatformId(platformId);
     try {
+      // Step 1: If switching to a different platform, update it first on the backend
+      if (platformId !== user.platform) {
+        const updatedUser = await updateSelectedPlatform(platformId);
+        setUser({
+          ...updatedUser,
+          avgDailyIncome: null,
+          workingHours: null,
+          workingShiftLabel: null,
+          workingTimeSlots: null,
+        });
+      }
+
+      // Step 2: Call connectSelectedPlatform to get mock shift data
       const payload = await connectSelectedPlatform();
       setIsShiftExpanded(false);
 
@@ -99,65 +138,24 @@ export default function PlatformConnectScreen() {
       });
 
       Alert.alert(
-        'Mock rider data allocated',
-        `${selectedPlatformLabel} income: Rs ${payload.averageDailyIncome}\nShift: ${payload.workingShiftLabel} (${payload.workingHours} hrs)`,
+        'Platform connected',
+        `${formatPlatformName(platformId)} details successfully allocated.\nAverage daily income: Rs ${payload.averageDailyIncome}\nShift: ${payload.workingShiftLabel} (${payload.workingHours} hrs)`,
       );
     } catch (err: any) {
       Alert.alert(
-        'Could not allocate mock rider data',
+        'Could not connect platform',
         err.response?.data?.message || err.message || 'Please try again.',
       );
     } finally {
-      setConnectingPlatform(false);
+      setConnectingPlatformId(null);
     }
   };
 
-  const performPlatformChange = async () => {
-    if (!selectedPlatform) {
-      return;
-    }
+  const handlePlatformPress = async (platformId: string) => {
+    if (!user) return;
 
-    setUpdatingPlatform(true);
-    try {
-      const updatedUser = await updateSelectedPlatform(selectedPlatform);
-      setIsShiftExpanded(false);
-      setUser({
-        ...updatedUser,
-        avgDailyIncome: null,
-        workingHours: null,
-        workingShiftLabel: null,
-        workingTimeSlots: null,
-      });
-      Alert.alert(
-        'Platform updated',
-        `${formatPlatformName(selectedPlatform)} is now your selected platform. Rider details were cleared and the current premium plan was removed if one was active.`,
-      );
-    } catch (err: any) {
-      Alert.alert('Could not update platform', err.response?.data?.message || err.message || 'Please try again.');
-    } finally {
-      setUpdatingPlatform(false);
-    }
-  };
-
-  const confirmPlatformChange = (message: string) => {
-    Alert.alert(
-      'Change platform',
-      message,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Change platform',
-          style: 'destructive',
-          onPress: () => {
-            void performPlatformChange();
-          },
-        },
-      ],
-    );
-  };
-
-  const handlePlatformChange = async () => {
-    if (!selectedPlatform || !hasPlatformChanged) {
+    // If it's already active and connected, do nothing
+    if (platformId === user.platform && hasWorkingShift) {
       return;
     }
 
@@ -191,21 +189,27 @@ export default function PlatformConnectScreen() {
         return;
       }
 
-      if (activePolicy?.status === 'active') {
-        confirmPlatformChange(
-          'Changing the platform will erase your current rider details and may remove the active premium plan. Do you want to continue?',
+      // If active shift is already connected to another platform, show switch warning
+      if (hasWorkingShift && platformId !== user.platform) {
+        Alert.alert(
+          'Change platform',
+          'Connecting to a new platform will disconnect your current active shift and clear its rider details. Do you want to continue?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Change platform',
+              style: 'destructive',
+              onPress: () => {
+                void handleConnect(platformId);
+              },
+            },
+          ],
         );
         return;
       }
 
-      if (hasWorkingShift) {
-        confirmPlatformChange(
-          'Changing the platform will erase your current rider details for this platform. Do you want to continue?',
-        );
-        return;
-      }
-
-      await performPlatformChange();
+      // If just onboarding selection is active or no shift is connected, connect immediately
+      await handleConnect(platformId);
     } catch (err: any) {
       Alert.alert(
         'Could not verify platform change',
@@ -273,65 +277,103 @@ export default function PlatformConnectScreen() {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
-          <Text style={styles.backBtnText}>Back</Text>
-        </TouchableOpacity>
+  const linkedPlatform = PLATFORMS_CONFIG.find((p) => p.id === currentPlatformId);
 
-        <Text style={styles.title}>Connect platform</Text>
+  return (
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFBFF" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={24} color="#736400" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Connect Platform</Text>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <Text style={styles.subtitle}>
           This test flow assigns mock average daily income plus rider working hours and hourly time slots for your selected q-commerce platform.
         </Text>
 
-        <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Selected platform</Text>
-          <Text style={styles.heroValue}>{selectedPlatformLabel}</Text>
-          <Text style={styles.heroMeta}>Chosen during onboarding</Text>
-        </View>
-
-        {!hasWorkingShift && (
-          <TouchableOpacity
-            style={[
-              styles.primaryBtn,
-              (connectingPlatform || isConnectDisabledForPlatformChange) && styles.primaryBtnDisabled,
-            ]}
-            onPress={handleConnect}
-            activeOpacity={0.85}
-            disabled={connectingPlatform || disconnectingPlatform || isConnectDisabledForPlatformChange}
-          >
-            {connectingPlatform ? (
-              <ActivityIndicator color="#08110F" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Connect {selectedPlatformLabel}</Text>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {hasWorkingShift && (
-          <View style={styles.connectedCard}>
-            <Text style={styles.connectedEyebrow}>Mock shift ready</Text>
-            <Text style={styles.connectedTitle}>Rider working hours assigned</Text>
-
-            <View style={styles.connectedStats}>
-              <View style={styles.connectedStatBlock}>
-                <Text style={styles.connectedStatLabel}>Daily average income</Text>
-                <Text style={styles.connectedStatValue}>Rs {user?.avgDailyIncome ?? 0}</Text>
+        {/* Linked Platforms Section (Only if connected) */}
+        {hasWorkingShift && linkedPlatform && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Linked Platforms</Text>
+            <View style={styles.linkedCard}>
+              <View style={styles.linkedInfoRow}>
+                <View style={styles.logoContainer}>
+                  {linkedPlatform.logoUrl ? (
+                    <Image source={{ uri: linkedPlatform.logoUrl }} style={styles.logoImage} />
+                  ) : (
+                    <View style={[styles.logoPlaceholder, { backgroundColor: linkedPlatform.tint }]}>
+                      <Ionicons name={linkedPlatform.icon as any} size={24} color="#FFFFFF" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.linkedMeta}>
+                  <Text style={styles.linkedName}>{linkedPlatform.label}</Text>
+                  <View style={styles.statusLabelRow}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusLabelText}>Current Primary Platform</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.connectedDivider} />
-              <View style={styles.connectedStatBlock}>
-                <Text style={styles.connectedStatLabel}>Working zone</Text>
-                <Text style={styles.connectedStatValueSmall}>{workingZone}</Text>
+              <View style={styles.badgeContainer}>
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                </View>
               </View>
             </View>
 
-            {hasWorkingShift && (
-              <View style={styles.shiftCard}>
-                <Text style={styles.shiftCardLabel}>Fetched rider shift</Text>
-                <Text style={styles.shiftCardValue}>{user?.workingShiftLabel}</Text>
-                <Text style={styles.shiftCardMeta}>{user?.workingHours} working hours</Text>
+            {/* Disconnect platform Button */}
+            <TouchableOpacity
+              style={[styles.disconnectButton, disconnectingPlatform && styles.buttonDisabled]}
+              onPress={handleDisconnect}
+              activeOpacity={0.85}
+              disabled={disconnectingPlatform}
+            >
+              {disconnectingPlatform ? (
+                <ActivityIndicator color="#BE2D06" />
+              ) : (
+                <>
+                  <Ionicons name="log-out-outline" size={18} color="#BE2D06" />
+                  <Text style={styles.disconnectButtonText}>Disconnect platform</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Mock shift details (Only if connected) */}
+        {hasWorkingShift && (
+          <View style={styles.section}>
+            <View style={styles.shiftCard}>
+              <Text style={styles.shiftCardHeader}>Mock Shift Allocated</Text>
+              
+              <View style={styles.shiftStatsRow}>
+                <View style={styles.shiftStatBlock}>
+                  <Text style={styles.shiftStatLabel}>Daily average income</Text>
+                  <Text style={styles.shiftStatValue}>₹{user?.avgDailyIncome ?? 0}</Text>
+                </View>
+                <View style={styles.shiftDivider} />
+                <View style={styles.shiftStatBlock}>
+                  <Text style={styles.shiftStatLabel}>Working zone</Text>
+                  <Text style={styles.shiftStatValueSmall}>{workingZone}</Text>
+                </View>
+              </View>
+
+              <View style={styles.shiftDetailBox}>
+                <Text style={styles.shiftDetailLabel}>Fetched rider shift</Text>
+                <Text style={styles.shiftDetailValue}>{user?.workingShiftLabel}</Text>
+                <Text style={styles.shiftDetailMeta}>{user?.workingHours} working hours</Text>
 
                 <View style={styles.timeSlotWrap}>
                   {visibleTimeSlots.map((slot) => (
@@ -353,27 +395,69 @@ export default function PlatformConnectScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-            )}
 
-            <Text style={styles.connectedMeta}>
-              Mock allocation only. Each connect generates a random average daily income and a rider shift between 3 and 14 working hours.
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.disconnectBtn, disconnectingPlatform && styles.disconnectBtnDisabled]}
-              onPress={handleDisconnect}
-              activeOpacity={0.85}
-              disabled={disconnectingPlatform || connectingPlatform}
-            >
-              {disconnectingPlatform ? (
-                <ActivityIndicator color="#FCA5A5" />
-              ) : (
-                <Text style={styles.disconnectBtnText}>Disconnect platform</Text>
-              )}
-            </TouchableOpacity>
+              <Text style={styles.shiftDisclaimer}>
+                Mock allocation only. Each connect generates a random average daily income and a rider shift between 3 and 14 working hours.
+              </Text>
+            </View>
           </View>
         )}
 
+        {/* Available Platforms Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Available Platforms</Text>
+          <View style={styles.availableList}>
+            {PLATFORMS_CONFIG.map((platform) => {
+              const isLinked = platform.id === currentPlatformId && hasWorkingShift;
+              const isConnecting = connectingPlatformId === platform.id;
+
+              return (
+                <View
+                  key={platform.id}
+                  style={[styles.platformRowCard, isLinked && styles.platformRowCardLinked]}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={styles.rowLogoContainer}>
+                      {platform.logoUrl ? (
+                        <Image source={{ uri: platform.logoUrl }} style={styles.logoImageSmall} />
+                      ) : (
+                        <View style={[styles.rowLogoPlaceholder, { backgroundColor: '#FFFCCB' }]}>
+                          <Ionicons name={platform.icon as any} size={20} color="#736400" />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.platformName}>{platform.label}</Text>
+                  </View>
+
+                  {isLinked ? (
+                    <View style={styles.linkedIndicator}>
+                      <Ionicons name="checkmark-circle" size={18} color="#696710" />
+                      <Text style={styles.linkedIndicatorText}>Linked</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.connectButton, isConnecting && styles.buttonDisabled]}
+                      onPress={() => handlePlatformPress(platform.id)}
+                      activeOpacity={0.85}
+                      disabled={connectingPlatformId !== null || disconnectingPlatform}
+                    >
+                      {isConnecting ? (
+                        <ActivityIndicator color="#5C5000" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="link-outline" size={14} color="#5C5000" />
+                          <Text style={styles.connectButtonText}>Connect</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Information Bento Cards */}
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>What connect does now</Text>
           <Text style={styles.infoText}>
@@ -386,190 +470,221 @@ export default function PlatformConnectScreen() {
           <Text style={styles.infoText}>
             If you shift from one platform to another, update it here and the app will use the new selection going forward.
           </Text>
-
-          <View style={styles.platformGrid}>
-            {PLATFORMS.map((platform) => {
-              const selected = selectedPlatform === platform.id;
-
-              return (
-                <TouchableOpacity
-                  key={platform.id}
-                  style={[
-                    styles.platformCard,
-                    selected && { borderColor: platform.tint, backgroundColor: `${platform.tint}14` },
-                  ]}
-                  onPress={() => setSelectedPlatform(platform.id)}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.platformDot, { backgroundColor: platform.tint }]} />
-                  <Text style={styles.platformCardLabel}>{platform.label}</Text>
-                  <Text style={styles.platformCardMeta}>
-                    {selected ? 'Selected' : 'Tap to choose'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.secondaryBtn, (!hasPlatformChanged || updatingPlatform) && styles.secondaryBtnDisabled]}
-            onPress={handlePlatformChange}
-            disabled={!hasPlatformChanged || updatingPlatform}
-            activeOpacity={0.85}
-          >
-            {updatingPlatform ? (
-              <ActivityIndicator color="#08110F" />
-            ) : (
-              <Text style={styles.secondaryBtnText}>Change platform</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#FFFBFF',
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 40,
+  header: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFBFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E4E4E7',
+    gap: 12,
   },
-  backBtn: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#202634',
-    backgroundColor: '#111723',
-    marginBottom: 18,
+  backButton: {
+    padding: 6,
+    borderRadius: 20,
   },
-  backBtnText: {
-    color: '#D1D5DB',
-    fontSize: 13,
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#736400',
   },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '700',
-    marginBottom: 8,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    gap: 24,
+    paddingBottom: 48,
   },
   subtitle: {
-    color: '#7A8597',
     fontSize: 14,
+    color: '#696710',
     lineHeight: 20,
-    marginBottom: 24,
   },
-  heroCard: {
-    backgroundColor: '#11141B',
-    borderRadius: 22,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1C2432',
-    marginBottom: 16,
+  section: {
+    gap: 12,
   },
-  heroLabel: {
-    color: '#7A8597',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3B3A00',
+    paddingHorizontal: 4,
+  },
+  linkedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FFDF00',
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#736400',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  linkedInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  logoContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#F4F4F5',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  logoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  linkedMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  linkedName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3B3A00',
+  },
+  statusLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#5E6A32',
+  },
+  statusLabelText: {
     fontSize: 12,
-    marginBottom: 8,
+    color: '#696710',
   },
-  heroValue: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 6,
+  badgeContainer: {
+    alignItems: 'flex-end',
   },
-  heroMeta: {
-    color: '#00E5A0',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  connectedCard: {
-    marginTop: 18,
-    borderRadius: 22,
-    padding: 20,
+  activeBadge: {
+    backgroundColor: '#EFFEB7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
     borderWidth: 1,
-    borderColor: '#00E5A033',
-    backgroundColor: '#0F1F18',
+    borderColor: 'rgba(94, 106, 50, 0.2)',
   },
-  connectedEyebrow: {
-    color: '#00E5A0',
-    fontSize: 12,
+  activeBadgeText: {
+    color: '#45501b',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  disconnectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#BE2D06',
+    borderRadius: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFBFF',
+  },
+  disconnectButtonText: {
+    color: '#BE2D06',
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  shiftCard: {
+    backgroundColor: '#FFFCCB',
+    borderWidth: 1,
+    borderColor: '#C0BD5F',
+    borderRadius: 20,
+    padding: 20,
+    gap: 16,
+  },
+  shiftCardHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#5C5000',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  connectedTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 18,
-  },
-  connectedStats: {
+  shiftStatsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    marginBottom: 16,
   },
-  connectedStatBlock: {
+  shiftStatBlock: {
     flex: 1,
   },
-  connectedDivider: {
+  shiftDivider: {
     width: 1,
-    backgroundColor: '#1E2E26',
-    marginHorizontal: 14,
+    backgroundColor: '#C0BD5F',
+    marginHorizontal: 16,
+    opacity: 0.5,
   },
-  connectedStatLabel: {
-    color: '#8BA798',
+  shiftStatLabel: {
     fontSize: 12,
-    marginBottom: 8,
-  },
-  connectedStatValue: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  connectedStatValueSmall: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  connectedMeta: {
-    color: '#9CA3AF',
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 18,
-  },
-  shiftCard: {
-    borderRadius: 18,
-    padding: 16,
-    backgroundColor: '#11261D',
-    borderWidth: 1,
-    borderColor: '#1E3A2F',
-    marginBottom: 16,
-  },
-  shiftCardLabel: {
-    color: '#8BA798',
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  shiftCardValue: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
+    color: '#696710',
     marginBottom: 6,
   },
-  shiftCardMeta: {
-    color: '#CDE7DA',
+  shiftStatValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#3B3A00',
+  },
+  shiftStatValueSmall: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#3B3A00',
+    lineHeight: 20,
+  },
+  shiftDetailBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.3)',
+    padding: 16,
+  },
+  shiftDetailLabel: {
+    fontSize: 11,
+    color: '#696710',
+    marginBottom: 4,
+  },
+  shiftDetailValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3B3A00',
+    marginBottom: 2,
+  },
+  shiftDetailMeta: {
     fontSize: 13,
-    marginBottom: 14,
+    color: '#696710',
+    marginBottom: 12,
   },
   timeSlotWrap: {
     flexDirection: 'row',
@@ -577,129 +692,141 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   timeSlotChip: {
-    borderRadius: 999,
+    borderRadius: 99,
     paddingHorizontal: 10,
-    paddingVertical: 7,
-    backgroundColor: '#193528',
+    paddingVertical: 6,
+    backgroundColor: '#ECE942',
     borderWidth: 1,
-    borderColor: '#275440',
+    borderColor: 'rgba(115, 100, 0, 0.2)',
   },
   timeSlotText: {
-    color: '#E5F6EC',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#5C5000',
+    fontSize: 11,
+    fontWeight: '700',
   },
   expandShiftBtn: {
     marginTop: 12,
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#102017',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderWidth: 1,
-    borderColor: '#1E3A2F',
+    borderColor: 'rgba(192, 189, 95, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
   },
   expandShiftBtnText: {
-    color: '#9DB8AB',
+    color: '#696710',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  shiftDisclaimer: {
     fontSize: 12,
-    fontWeight: '700',
+    color: '#696710',
+    lineHeight: 18,
+    opacity: 0.8,
   },
-  infoCard: {
-    backgroundColor: '#13131A',
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1E1E2E',
-    marginTop: 18,
-  },
-  infoTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  infoText: {
-    color: '#7A8597',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  platformGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  availableList: {
     gap: 12,
-    marginTop: 16,
   },
-  platformCard: {
-    width: '47%',
+  platformRowCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#232C3A',
-    backgroundColor: '#10151E',
-    padding: 16,
-  },
-  platformDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginBottom: 12,
-  },
-  platformCardLabel: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  platformCardMeta: {
-    color: '#7A8597',
-    fontSize: 12,
-  },
-  primaryBtn: {
-    height: 56,
-    borderRadius: 14,
-    justifyContent: 'center',
+    borderColor: '#E4E4E7',
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#00E5A0',
+    shadowColor: '#000000',
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  primaryBtnDisabled: {
-    opacity: 0.65,
+  platformRowCardLinked: {
+    opacity: 0.8,
+    backgroundColor: '#F4F4F5',
   },
-  primaryBtnText: {
-    color: '#08110F',
-    fontSize: 16,
-    fontWeight: '700',
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  disconnectBtn: {
-    marginTop: 14,
-    height: 48,
-    borderRadius: 12,
+  rowLogoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  logoImageSmall: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  rowLogoPlaceholder: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#7F1D1D',
-    backgroundColor: '#2A1115',
+    borderColor: 'rgba(192, 189, 95, 0.2)',
   },
-  disconnectBtnDisabled: {
-    opacity: 0.65,
-  },
-  disconnectBtnText: {
-    color: '#FCA5A5',
-    fontSize: 14,
+  platformName: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#3B3A00',
   },
-  secondaryBtn: {
-    marginTop: 16,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
+  linkedIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00E5A0',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#E4E4E7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
   },
-  secondaryBtnDisabled: {
-    opacity: 0.45,
-  },
-  secondaryBtnText: {
-    color: '#08110F',
-    fontSize: 14,
+  linkedIndicatorText: {
+    color: '#696710',
+    fontSize: 13,
     fontWeight: '700',
+  },
+  connectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFDF00',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: '#736400',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  connectButtonText: {
+    color: '#5C5000',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#3B3A00',
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#696710',
+    lineHeight: 18,
   },
 });

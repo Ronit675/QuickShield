@@ -1,0 +1,151 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-tertiary-fixed-variant": "#616d35", "primary-dim": "#665800", "tertiary-fixed": "#effeb7", "secondary-fixed-dim": "#ddda33", error: "#be2d06", background: "#fffbff", secondary: "#696700", "surface-container-lowest": "#ffffff", "on-background": "#3b3a00", "on-secondary": "#ffffff", "surface-container": "#fcf983", "surface-container-highest": "#f1ee68", "surface-bright": "#fffbff", "surface-tint": "#736400", "primary-fixed-dim": "#efd100", "on-surface": "#3b3a00", "secondary-container": "#ece942", "on-primary-fixed-variant": "#675900", "tertiary-container": "#effeb7", "on-primary-fixed": "#473d00", "primary-container": "#ffdf00", "inverse-surface": "#0f0f00", "tertiary-fixed-dim": "#e1efaa", "inverse-on-surface": "#a3a146", "error-container": "#f95630", "on-secondary-fixed": "#424100", "inverse-primary": "#ffdf00", primary: "#736400", "primary-fixed": "#ffdf00", "tertiary-dim": "#525d27", "secondary-fixed": "#ece942", "on-secondary-container": "#565400", "on-tertiary-fixed": "#45501b", "surface-container-low": "#fffccb", "surface-container-high": "#f7f376", outline: "#86842c", "on-error-container": "#520c00", "on-surface-variant": "#696710", "surface-variant": "#f1ee68", "on-tertiary-container": "#57622c", "on-secondary-fixed-variant": "#605e00", surface: "#fffbff", "secondary-dim": "#5c5b00", "on-tertiary": "#ffffff", "error-dim": "#b92902", "on-primary-container": "#5c5000", "outline-variant": "#c0bd5f", "on-error": "#ffffff", tertiary: "#5e6a32", "surface-dim": "#ebe85b", "on-primary": "#ffffff"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {headline: ["Domine"], display: ["Domine"], body: ["Inter"], label: ["Inter"]}, fontSize: {}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Domine', serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- Parent Dashboard Wrapper (Blurred/Overlayed) -->
+<div class="fixed inset-0 z-0 flex flex-col">
+<!-- TopAppBar Placeholder (as per JSON) -->
+<header class="bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 shadow-sm dark:shadow-none flex justify-between items-center px-4 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400">security</span>
+<span class="font-['Domine'] font-bold text-lg text-yellow-600 dark:text-yellow-500 text-xl font-black">QuickShield</span>
+</div>
+<span class="material-symbols-outlined">menu</span>
+</header>
+<!-- Main Dashboard Canvas -->
+<main class="flex-1 p-6 space-y-6">
+<div class="grid grid-cols-1 gap-4">
+<div class="h-40 bg-surface-container-low rounded-xl p-4 flex flex-col justify-end">
+<div class="w-1/2 h-4 bg-surface-variant rounded-full mb-2"></div>
+<div class="w-3/4 h-8 bg-surface-variant rounded-full"></div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="h-32 bg-surface-container rounded-xl"></div>
+<div class="h-32 bg-surface-container rounded-xl"></div>
+</div>
+<div class="h-64 bg-surface-container-high rounded-xl"></div>
+</div>
+</main>
+<!-- BottomNavBar Placeholder (as per JSON) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+<div class="flex flex-col items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-xl p-2 transition-transform scale-95">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Inter'] text-xs font-medium">Dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 p-2">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-['Inter'] text-xs font-medium">Insurance</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 p-2">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-['Inter'] text-xs font-medium">Payouts</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 p-2">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Inter'] text-xs font-medium">Account</span>
+</div>
+</nav>
+</div>
+<!-- Backdrop Overlay -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity duration-300"></div>
+<!-- Sidebar Drawer -->
+<aside class="fixed top-0 left-0 h-full w-3/4 max-w-sm bg-white z-[70] flex flex-col shadow-2xl overflow-hidden">
+<!-- Top Section: User Profile -->
+<section class="p-8 bg-primary-container text-on-primary-container">
+<div class="flex flex-col gap-4">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white/50 shadow-md">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a friendly female rider with a warm smile, set against a softly blurred urban background. The lighting is natural and bright, echoing a vibrant light-mode aesthetic. Her attire is practical yet stylish, matching the sophisticated and energetic brand identity of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuApxcSU4aQvTSfQd9Q80nNrKbDtaUZNRuDooVEGfg9v3xd3BSKFKozamJksf9zHa9nD0nebwnJ1h3LWOznwDSUd-0UTHbL2A7_egM7bR2Bl_YOEO2_J2-aZkzxQAJ1o10YMlMjBV5UzHnep4_OV7z87C4jbtQWGr-lIP4kOzaSRTK5RtMELPbRKMxIpFZpynHrWt3XYxhV6is7wGMvoNPhaOFz3tQETO4FXz1KTLOTCvVVkiiV__XeCwzPglnEerqiqbun0VvWLtizm">
+</div>
+<div>
+<h2 class="text-2xl font-black leading-tight font-headline">Hello, Rider!</h2>
+<p class="text-sm opacity-80 font-body">name@example.com</p>
+</div>
+</div>
+</section>
+<!-- Menu items Section -->
+<nav class="flex-1 overflow-y-auto py-6 px-4">
+<ul class="space-y-2">
+<!-- Home (Active State) -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-yellow-50 text-yellow-700 font-bold transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">home</span>
+<span class="font-body">Home</span>
+</a>
+</li><li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-body">Wallet</span>
+</a>
+</li>
+<!-- Weather Forecast -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">wb_sunny</span>
+<span class="font-body">Weather Forecast</span>
+</a>
+</li>
+<!-- Connect Platform -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">link</span>
+<span class="font-body">Connect Platform</span>
+</a>
+</li>
+<!-- Rider Details -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-body">Rider Details</span>
+</a>
+</li>
+<hr class="my-4 border-zinc-100">
+<!-- Settings -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body">Settings</span>
+</a>
+</li>
+<!-- Help & Support -->
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-zinc-50 transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body">Help &amp; Support</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Bottom Section -->
+<section class="p-6 border-t border-zinc-100 space-y-4">
+<button class="w-full flex items-center justify-center gap-2 py-3 px-4 bg-error text-white rounded-xl font-bold shadow-lg shadow-error/20 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">logout</span>
+<span class="">Log Out</span>
+</button>
+<div class="text-center">
+<p class="text-[10px] uppercase tracking-widest text-zinc-400 font-medium">QuickShield v2.4.0-pro</p>
+</div>
+</section>
+</aside>
+</body></html>

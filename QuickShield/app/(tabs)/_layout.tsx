@@ -20,6 +20,7 @@ export default function TabLayout() {
           <Stack.Screen name="weather" />
           <Stack.Screen name="create-policy" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="wallet" />
         </Stack>
       </LanguageProvider>
     </AuthProvider>

@@ -4,27 +4,33 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useLanguage } from '../directory/Languagecontext';
+import ProfileAvatar from './ProfileAvatar';
 
 type QuickShieldSidebarProps = {
   visible: boolean;
   displayName: string;
   contactLine: string;
   platformLabel: string;
+  profilePhoto?: string | null;
   onClose: () => void;
   onProfilePress: () => void;
   onPlatformPress: () => void;
   onWeatherPress: () => void;
   onSettingsPress: () => void;
   onSignOutPress: () => void;
+  onWalletPress?: () => void;
+  onHelpPress?: () => void;
 };
 
 const ANIMATION_DURATION_MS = 260;
@@ -34,16 +40,19 @@ export default function QuickShieldSidebar({
   displayName,
   contactLine,
   platformLabel,
+  profilePhoto,
   onClose,
   onProfilePress,
   onPlatformPress,
   onWeatherPress,
   onSettingsPress,
   onSignOutPress,
+  onWalletPress,
+  onHelpPress,
 }: QuickShieldSidebarProps) {
   const { t } = useLanguage();
   const { width } = useWindowDimensions();
-  const sidebarWidth = useMemo(() => width * 0.7, [width]);
+  const sidebarWidth = useMemo(() => width * 0.75, [width]);
   const [isMounted, setIsMounted] = useState(visible);
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(-sidebarWidth)).current;
@@ -98,39 +107,75 @@ export default function QuickShieldSidebar({
 
   const menuItems = [
     {
-      key: 'profile',
-      label: t('sidebar.myProfile'),
-      hint: t('sidebar.myProfileHint'),
-      icon: <Feather name="user" size={20} color="#8BC4FF" />,
-      onPress: onProfilePress,
+      key: 'home',
+      label: t('sidebar.home'),
+      icon: 'home',
+      active: true,
+      onPress: onClose,
     },
     {
-      key: 'platform',
-      label: t('sidebar.connectPlatform', { platform: platformLabel }),
-      hint: t('sidebar.connectPlatformHint'),
-      icon: <MaterialCommunityIcons name="shield-link-variant-outline" size={22} color="#00E5A0" />,
-      onPress: onPlatformPress,
+      key: 'wallet',
+      label: t('sidebar.wallet'),
+      icon: 'wallet-outline',
+      onPress: () => {
+        onClose();
+        onWalletPress?.();
+      },
     },
     {
       key: 'weather',
       label: t('sidebar.weather'),
-      hint: t('sidebar.weatherHint'),
-      icon: <Feather name="cloud-rain" size={20} color="#7DD3FC" />,
-      onPress: onWeatherPress,
+      icon: 'sunny-outline',
+      onPress: () => {
+        onClose();
+        onWeatherPress();
+      },
+    },
+    {
+      key: 'platform',
+      label: t('sidebar.connectPlatform', { platform: platformLabel || 'Platform' }),
+      icon: 'link-outline',
+      onPress: () => {
+        onClose();
+        onPlatformPress();
+      },
+    },
+    {
+      key: 'profile',
+      label: t('sidebar.myProfile'),
+      icon: 'person-outline',
+      onPress: () => {
+        onClose();
+        onProfilePress();
+      },
+    },
+    {
+      key: 'divider',
+      label: '',
+      icon: '',
+      onPress: () => {},
     },
     {
       key: 'settings',
       label: t('sidebar.settings'),
-      hint: t('sidebar.settingsHint'),
-      icon: <Feather name="settings" size={20} color="#FFD166" />,
-      onPress: onSettingsPress,
+      icon: 'settings-outline',
+      onPress: () => {
+        onClose();
+        onSettingsPress();
+      },
     },
     {
-      key: 'signout',
-      label: t('sidebar.signOut'),
-      hint: t('sidebar.signOutHint'),
-      icon: <Feather name="log-out" size={20} color="#FCA5A5" />,
-      onPress: onSignOutPress,
+      key: 'help',
+      label: t('sidebar.helpSupport'),
+      icon: 'help-circle-outline',
+      onPress: () => {
+        onClose();
+        if (onHelpPress) {
+          onHelpPress();
+        } else {
+          Alert.alert('Help & Support', 'For support, please contact us at support@quickshield.com');
+        }
+      },
     },
   ];
 
@@ -150,59 +195,69 @@ export default function QuickShieldSidebar({
             },
           ]}
         >
-          <View style={styles.header}>
-            <View style={styles.brandRow}>
-              <View style={styles.logoWrap}>
-                <View style={styles.logoCore}>
-                  <Text style={styles.logoText}>QS</Text>
-                </View>
-              </View>
-
-              <View style={styles.brandTextWrap}>
-                <Text style={styles.appName}>QuickShield</Text>
-                <Text style={styles.appTagline}>Income protection for riders</Text>
-              </View>
+          {/* Top Section: User Profile */}
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <ProfileAvatar uri={profilePhoto} size={64} borderRadius={32} />
+            </View>
+            <View style={styles.profileTextWrap}>
+              <Text style={styles.profileGreeting} numberOfLines={1}>
+                Hello, {displayName || 'Rider'}!
+              </Text>
+              <Text style={styles.profileEmail} numberOfLines={1}>
+                {contactLine || 'rider@quickshield.com'}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.profileCard}>
-            <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.profileMeta}>
-              {platformLabel ? `Connected: ${platformLabel}` : contactLine}
-            </Text>
-          </View>
+          {/* Menu items Section */}
+          <ScrollView
+            style={styles.menuScroll}
+            contentContainerStyle={styles.menuContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {menuItems.map((item, index) => {
+              if (item.key === 'divider') {
+                return <View key={`divider-${index}`} style={styles.divider} />;
+              }
 
-          <View style={styles.menuSection}>
-            <View style={styles.menuItemsWrap}>
-              {menuItems
-                .filter((item) => item.key !== 'signout')
-                .map((item) => (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={styles.menuItem}
-                    onPress={item.onPress}
-                    activeOpacity={0.88}
-                  >
-                    <View style={styles.menuIconWrap}>{item.icon}</View>
-                    <View style={styles.menuCopy}>
-                      <Text style={styles.menuLabel}>{item.label}</Text>
-                      <Text style={styles.menuHint}>{item.hint}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-            </View>
+              const isActive = item.active;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.menuItem, isActive && styles.menuItemActive]}
+                  onPress={item.onPress}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={item.icon as any}
+                    size={22}
+                    color={isActive ? '#A16207' : '#696710'}
+                  />
+                  <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
+          {/* Bottom Section */}
+          <View style={styles.bottomSection}>
             <TouchableOpacity
-              style={[styles.menuItem, styles.signOutItem]}
-              onPress={onSignOutPress}
-              activeOpacity={0.88}
+              style={styles.signOutButton}
+              onPress={() => {
+                onClose();
+                onSignOutPress();
+              }}
+              activeOpacity={0.85}
             >
-              <View style={styles.menuIconWrap}>{menuItems[3].icon}</View>
-              <View style={styles.menuCopy}>
-                <Text style={styles.menuLabel}>{menuItems[3].label}</Text>
-                <Text style={styles.menuHint}>{menuItems[3].hint}</Text>
-              </View>
+              <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.signOutText}>{t('sidebar.signOut')}</Text>
             </TouchableOpacity>
+            <View style={styles.versionContainer}>
+              <Text style={styles.versionText}>QUICKSHIELD v2.4.0-PRO</Text>
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -217,137 +272,119 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(2, 6, 23, 0.58)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   sidebar: {
     flex: 1,
-    backgroundColor: '#0D1118',
-    borderTopRightRadius: 28,
-    borderBottomRightRadius: 28,
-    borderRightWidth: 1,
-    borderColor: '#1D2735',
-    paddingTop: 56,
-    paddingHorizontal: 18,
-    paddingBottom: 24,
+    backgroundColor: '#FFFFFF',
+    height: '100%',
     shadowColor: '#000000',
-    shadowOpacity: 0.38,
-    shadowRadius: 24,
-    shadowOffset: { width: 8, height: 0 },
-    elevation: 22,
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    shadowOffset: { width: 4, height: 0 },
+    elevation: 16,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 24,
+  profileSection: {
+    paddingHorizontal: 24,
+    paddingTop: 64,
+    paddingBottom: 28,
+    backgroundColor: '#FFDF00',
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    flex: 1,
-  },
-  logoWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: '#132033',
-    borderWidth: 1,
-    borderColor: '#20405F',
+  avatarContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    marginBottom: 16,
   },
-  logoCore: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#00E5A0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  profileTextWrap: {
+    gap: 4,
   },
-  logoText: {
-    color: '#08110F',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  profileGreeting: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#5C5000',
   },
-  brandTextWrap: {
+  profileEmail: {
+    fontSize: 14,
+    color: '#5C5000',
+    opacity: 0.8,
+  },
+  menuScroll: {
     flex: 1,
   },
-  appName: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.8,
-    marginBottom: 2,
-  },
-  appTagline: {
-    color: '#7A8597',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  profileCard: {
-    backgroundColor: '#101722',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#1E2B3D',
+  menuContent: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 20,
-  },
-  profileName: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  profileMeta: {
-    color: '#8B9AAF',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  menuSection: {
-    flex: 1,
-    gap: 12,
-  },
-  menuItemsWrap: {
-    gap: 12,
-  },
-  signOutItem: {
-    marginTop: 'auto',
+    paddingVertical: 24,
+    gap: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#121922',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#1D2836',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 16,
   },
-  menuIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#0B1119',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuCopy: {
-    flex: 1,
+  menuItemActive: {
+    backgroundColor: '#FEFCE8',
   },
   menuLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#696710',
+  },
+  menuLabelActive: {
+    fontWeight: '700',
+    color: '#A16207',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F4F4F5',
+    marginVertical: 12,
+  },
+  bottomSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F4F4F5',
+    backgroundColor: '#FFFFFF',
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#BE2D06',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#BE2D06',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  signOutText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 3,
   },
-  menuHint: {
-    color: '#7A8597',
-    fontSize: 12,
-    lineHeight: 18,
+  versionContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  versionText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '500',
+    letterSpacing: 1.2,
   },
 });

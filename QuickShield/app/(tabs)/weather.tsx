@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { useLanguage } from './src/directory/Languagecontext';
 
 const FORECAST = [
   { key: 'mon', day: 'Mon', date: 'Oct 23', status: 'Heavy Rain', detail: 'Persistent showers', icon: 'rainy', prob: '85%', high: '21°', low: '14°', prominent: false },
@@ -18,7 +17,6 @@ const FORECAST = [
 
 export default function WeatherScreen() {
   const router = useRouter();
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
   return (
@@ -97,7 +95,7 @@ export default function WeatherScreen() {
           <View style={styles.protectIcon}><Ionicons name="shield" size={20} color="#565400" /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.protectTitle}>Coverage Alert</Text>
-            <Text style={styles.protectText}>Your "Rain Shield" policy is active for the Wednesday peak event.</Text>
+            <Text style={styles.protectText}>Your &quot;Rain Shield&quot; policy is active for the Wednesday peak event.</Text>
           </View>
         </View>
 
