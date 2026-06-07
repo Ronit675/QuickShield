@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, View, Text, TouchableOpacity, StyleSheet, Modal,
+  Alert, View, Text, TouchableOpacity, StyleSheet, Modal, ImageBackground,
   StatusBar, ScrollView, RefreshControl, ActivityIndicator, Pressable,
   type StyleProp,
   type ViewStyle,
@@ -16,6 +16,9 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import api from '../services/api';
@@ -147,6 +150,9 @@ const RED_FLAG_PAUSE_LABELS = new Set([
   'Account suspended (60 mins)',
 ]);
 
+const ACTIVE_RAIN_HERO_IMAGE =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuCKqb3ADKEwtHnGdCZB-bYbSFfsQYNxNyAz9KMIm9K7-5Gw_rZt-GctrPpdoltK776x1J11eV0OsxBXdDAShpm9XeeEupZTIiUcSZ9pEKK3SJCHjxcoo6u3X-7SlyPV5dyFZSbQQ5NvyOXhnkTk1SHLJPFEXAJQBIicAHGB7uE5q3D8BizQYUH1uzeLaFoYZj7lQ7zymqqiDvpaLFRvjC33s9XQkAPMiaV3KVWL5rc0AtJ-2ZHOQzZG-hWn3k9WEPnqQumuZxo2biYr';
+
 type AnimatedAutoRenewSwitchProps = {
   value: boolean;
   onValueChange: (nextValue: boolean) => void;
@@ -226,6 +232,98 @@ const AnimatedAutoRenewSwitch = ({
         <Animated.View style={[styles.autoRenewSwitchThumb, thumbAnimatedStyle]} />
       </Animated.View>
     </Pressable>
+  );
+};
+
+const RainDrop = ({ index }: { index: number }) => {
+  const translateY = useSharedValue(-20);
+  const opacity = useSharedValue(0);
+
+  const left = `${(index * 7.7) % 100}%`;
+  const duration = 800 + Math.random() * 1000;
+  const delay = Math.random() * 2000;
+
+  useEffect(() => {
+    translateY.value = withDelay(
+      delay,
+      withRepeat(withTiming(300, { duration }), -1, false)
+    );
+    opacity.value = withDelay(
+      delay,
+      withRepeat(withTiming(0.6, { duration: duration * 0.2 }), -1, true)
+    );
+  }, [delay, duration, opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: translateY.value > 250 ? 0 : 0.4,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left,
+          width: 1.5,
+          height: 15,
+          backgroundColor: '#FFF',
+          borderRadius: 1,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+};
+
+const LightningEffect = () => {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    const triggerLightning = () => {
+      // Sequence: Flash (bright) -> Dim -> Flash (smaller) -> Fade Out
+      opacity.value = withSequence(
+        withTiming(0.6, { duration: 50 }),
+        withTiming(0.1, { duration: 30 }),
+        withTiming(0.4, { duration: 50 }),
+        withTiming(0, { duration: 400 })
+      );
+
+      // Schedule next strike after a random delay (4s to 12s)
+      const nextDelay = 4000 + Math.random() * 8000;
+      timeoutRef.current = setTimeout(triggerLightning, nextDelay);
+    };
+
+    const timeoutRef = { current: setTimeout(triggerLightning, 3000) };
+
+    return () => clearTimeout(timeoutRef.current);
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: '#FFF' },
+        animatedStyle,
+      ]}
+      pointerEvents="none"
+    />
+  );
+};
+
+const RainEffect = () => {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LightningEffect />
+      {[...Array(24)].map((_, i) => (
+        <RainDrop key={i} index={i} />
+      ))}
+    </View>
   );
 };
 
@@ -439,7 +537,21 @@ export default function HomeScreen({
   const miniAccruedClaimAmount = policy?.status === 'active'
     ? (policy.coveragePerDay / 24) * (miniElapsedMs / 3600000)
     : 0;
-  const isPremiumDesignState = isPremiumEmptyState || (isPremiumTab && shouldShowActiveDisruptionDesign);
+  const isActiveProtectionDashboard = shouldShowActiveDisruptionDesign;
+  const isLightDashboardState = isPremiumEmptyState || isActiveProtectionDashboard;
+  const activeProtectionLocationLabel = [user?.city, user?.serviceZone]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(', ') || 'Mumbai, Maharashtra';
+  const activeProtectionStartedAtLabel = miniTrackedStartMs
+    ? new Date(miniTrackedStartMs).toLocaleTimeString('en-IN', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : '--';
+  const activeProtectionRainRateLabel = miniRainfallRateMmPerHr !== null
+    ? `${miniRainfallRateMmPerHr.toFixed(1)} mm/hr`
+    : 'Unavailable';
+  const activeProtectionPolicyId = policy?.id ? `QS-${policy.id.slice(-8).toUpperCase()}` : 'QS-ACTIVE';
 
   useEffect(() => {
     if (!isClaimsFeatureDisabled || !outOfTownUntilDate) {
@@ -835,10 +947,10 @@ export default function HomeScreen({
   }
 
   return (
-    <View style={[styles.container, isPremiumDesignState && styles.premiumEmptyContainer]}>
+    <View style={[styles.container, isLightDashboardState && styles.premiumEmptyContainer]}>
       <StatusBar
-        barStyle={isPremiumDesignState ? 'dark-content' : 'light-content'}
-        backgroundColor={isPremiumDesignState ? '#FFFFFF' : '#0A0A0F'}
+        barStyle={isLightDashboardState ? 'dark-content' : 'light-content'}
+        backgroundColor={isLightDashboardState ? '#FFFFFF' : '#0A0A0F'}
       />
 
       <QuickShieldSidebar
@@ -870,13 +982,29 @@ export default function HomeScreen({
       />
 
       {/* Top bar */}
-      {isPremiumDesignState ? (
-        <View style={styles.premiumEmptyTopBar}>
-          <View style={styles.premiumEmptyBrand}>
-            <Text style={styles.premiumEmptyBrandText}>
-              {shouldShowActiveDisruptionDesign ? 'Insurance' : 'QuickShield'}
-            </Text>
-          </View>
+      {isLightDashboardState ? (
+        <View style={styles.activeDashboardTopBar}>
+          <TouchableOpacity
+            onPress={() => setProfileMenuVisible((current) => !current)}
+            activeOpacity={0.85}
+            style={styles.activeDashboardIconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
+          >
+            <Ionicons name="menu" size={22} color="#3B3A00" />
+          </TouchableOpacity>
+
+          <Text style={styles.activeDashboardBrandText}>QuickShield</Text>
+
+          <TouchableOpacity
+            onPress={() => router.push('/profile')}
+            activeOpacity={0.85}
+            style={styles.activeDashboardIconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+          >
+            <Ionicons name="person-circle-outline" size={24} color="#3B3A00" />
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.topBar}>
@@ -952,7 +1080,7 @@ export default function HomeScreen({
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor={isPremiumDesignState ? '#736400' : '#00E5A0'} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor={isLightDashboardState ? '#736400' : '#00E5A0'} />}
       >
         {isClaimsFeatureDisabled && (
           <View style={styles.imBackCard}>
@@ -1007,7 +1135,129 @@ export default function HomeScreen({
           </View>
         )}
 
-        {!isPremiumTab ? (
+        {!isPremiumTab && shouldShowActiveDisruptionDesign && policy?.status === 'active' ? (
+          <View style={styles.activeDashboardContent}>
+            <View style={styles.hiddenRainDisruptionSync}>
+              <RainDisruptionCard
+                isActive={isActive}
+                isPaused={isClaimsFeatureDisabled}
+                pausedUntilLabel={selectedReturnDateLabel}
+                onPolicyRefresh={syncPolicy}
+                policy={policy}
+                user={user}
+              />
+            </View>
+
+            <Text style={styles.activeDashboardGreeting}>Hello, Rider!</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => router.push('/weather')}
+              accessibilityRole="button"
+              accessibilityLabel="View local weather"
+            >
+              <ImageBackground
+                source={{ uri: ACTIVE_RAIN_HERO_IMAGE }}
+                style={styles.activeWeatherHero}
+                imageStyle={styles.activeWeatherHeroImage}
+              >
+                <RainEffect />
+                <View style={styles.activeWeatherHeroShade} />
+                <View style={styles.activeWeatherHeroContent}>
+                  <View>
+                    <Text style={styles.activeWeatherEyebrow}>Local Weather</Text>
+                    <Text style={styles.activeWeatherTitle}>Rain detected</Text>
+                  </View>
+                  <View style={styles.activeWeatherLiveBadge}>
+                    <Ionicons name="rainy" size={13} color="#5C5000" />
+                    <Text style={styles.activeWeatherLiveText}>Live Now</Text>
+                  </View>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+
+            <View style={styles.activeShieldCard}>
+              <View style={styles.activeShieldHeader}>
+                <View style={styles.activeShieldTitleWrap}>
+                  <Text style={styles.activeShieldTitle}>Rain Shield Active</Text>
+                  <View style={styles.activeShieldLocationRow}>
+                    <Ionicons name="location-outline" size={14} color="#696710" />
+                    <Text style={styles.activeShieldLocationText}>{activeProtectionLocationLabel}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.activeShieldProtectedBadge}>
+                  <Text style={styles.activeShieldProtectedText}>Protected</Text>
+                </View>
+              </View>
+
+              <View style={styles.activeShieldInfoBox}>
+                <Ionicons name="information-circle-outline" size={18} color="#5C5000" />
+                <Text style={styles.activeShieldInfoText}>
+                  Rain detected at your location. Coverage started at {activeProtectionStartedAtLabel}.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.activeDashboardMetricsGrid}>
+              <View style={styles.activeDashboardMetricCard}>
+                <Text style={styles.activeDashboardMetricLabel}>Duration Active</Text>
+                <Text style={styles.activeDashboardTimerValue}>{formatClockDuration(miniElapsedMs)}</Text>
+                <Text style={styles.activeDashboardMetricPill}>Payout accruing in real-time</Text>
+              </View>
+
+              <View style={[styles.activeDashboardMetricCard, styles.activeDashboardCreditCard]}>
+                <Text style={styles.activeDashboardMetricLabel}>Accrued Credit</Text>
+                <Text style={styles.activeDashboardCreditValue}>{formatCurrency(miniAccruedClaimAmount)}</Text>
+                <View style={styles.activeDashboardPulseRow}>
+                  <View style={[styles.activeDashboardPulseDot, styles.activeDashboardPulseDotStrong]} />
+                  <View style={[styles.activeDashboardPulseDot, styles.activeDashboardPulseDotMedium]} />
+                  <View style={[styles.activeDashboardPulseDot, styles.activeDashboardPulseDotSoft]} />
+                </View>
+                <Text style={styles.activeDashboardIntensityText}>Based on current intensity</Text>
+                <TouchableOpacity
+                  style={styles.activeDashboardWalletButton}
+                  activeOpacity={0.88}
+                  onPress={handleRedeem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Transfer accrued credit to wallet"
+                >
+                  <Ionicons name="wallet-outline" size={16} color="#5C5000" />
+                  <Text style={styles.activeDashboardWalletButtonText}>Transfer to Wallet</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.activeDashboardDetailsButton}
+              activeOpacity={0.88}
+              onPress={onOpenPremium}
+              accessibilityRole="button"
+              accessibilityLabel="View policy details"
+            >
+              <Text style={styles.activeDashboardDetailsButtonText}>View Policy Details</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFBFF" />
+            </TouchableOpacity>
+
+            <View style={styles.activeDashboardDetailsList}>
+              <View style={styles.activeDashboardDetailRow}>
+                <Text style={styles.activeDashboardDetailLabel}>Policy ID</Text>
+                <Text style={styles.activeDashboardDetailValue}>{activeProtectionPolicyId}</Text>
+              </View>
+              <View style={styles.activeDashboardDetailRow}>
+                <Text style={styles.activeDashboardDetailLabel}>Current Intensity</Text>
+                <View style={styles.activeDashboardRainValueWrap}>
+                  <Ionicons name="water" size={14} color="#5E6A32" />
+                  <Text style={styles.activeDashboardRainValue}>{activeProtectionRainRateLabel}</Text>
+                </View>
+              </View>
+              <View style={[styles.activeDashboardDetailRow, styles.activeDashboardDetailRowLast]}>
+                <Text style={styles.activeDashboardDetailLabel}>Max Coverage</Text>
+                <Text style={styles.activeDashboardDetailValue}>{formatCurrency(policy.coveragePerDay)}</Text>
+              </View>
+            </View>
+          </View>
+        ) : !isPremiumTab ? (
           <>
             <View
               style={[
@@ -1745,6 +1995,338 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#D1D5DB', marginBottom: 2 },
+
+  activeDashboardTopBar: {
+    marginHorizontal: -20,
+    paddingTop: 56,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activeDashboardIconButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeDashboardBrandText: {
+    color: '#3B3A00',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  activeDashboardContent: {
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  activeDashboardGreeting: {
+    color: '#3B3A00',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    marginBottom: 14,
+  },
+  activeWeatherHero: {
+    height: 256,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FFDF00',
+    marginBottom: 16,
+    backgroundColor: '#D1D5DB',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  activeWeatherHeroImage: {
+    borderRadius: 10,
+  },
+  activeWeatherHeroShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+  },
+  activeWeatherHeroContent: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  activeWeatherEyebrow: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    opacity: 0.86,
+    marginBottom: 3,
+  },
+  activeWeatherTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  activeWeatherLiveBadge: {
+    minHeight: 28,
+    borderRadius: 999,
+    backgroundColor: '#FFDF00',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+  },
+  activeWeatherLiveText: {
+    color: '#5C5000',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  activeShieldCard: {
+    borderRadius: 12,
+    backgroundColor: '#FFDF00',
+    borderWidth: 1,
+    borderColor: '#C0BD5F55',
+    padding: 20,
+    gap: 14,
+    marginBottom: 16,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  activeShieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  activeShieldTitleWrap: {
+    flex: 1,
+  },
+  activeShieldTitle: {
+    color: '#5C5000',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  activeShieldLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 5,
+  },
+  activeShieldLocationText: {
+    flex: 1,
+    color: '#696710',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  activeShieldProtectedBadge: {
+    borderRadius: 999,
+    backgroundColor: '#5C5000',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  activeShieldProtectedText: {
+    color: '#FFDF00',
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  activeShieldInfoBox: {
+    minHeight: 48,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 251, 255, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(92, 80, 0, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeShieldInfoText: {
+    flex: 1,
+    color: '#5C5000',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  activeDashboardMetricsGrid: {
+    gap: 14,
+    marginBottom: 16,
+  },
+  activeDashboardMetricCard: {
+    minHeight: 176,
+    borderRadius: 12,
+    backgroundColor: '#FFFCCB',
+    borderWidth: 1,
+    borderColor: '#C0BD5F33',
+    padding: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  activeDashboardCreditCard: {
+    backgroundColor: '#F7F376',
+  },
+  activeDashboardMetricLabel: {
+    color: '#696710',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    marginBottom: 9,
+  },
+  activeDashboardTimerValue: {
+    color: '#736400',
+    fontSize: 44,
+    lineHeight: 50,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  activeDashboardMetricPill: {
+    color: '#696710',
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(115, 100, 0, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    overflow: 'hidden',
+  },
+  activeDashboardCreditValue: {
+    color: '#3B3A00',
+    fontSize: 38,
+    lineHeight: 44,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+  activeDashboardPulseRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  activeDashboardPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activeDashboardPulseDotStrong: {
+    backgroundColor: '#736400',
+  },
+  activeDashboardPulseDotMedium: {
+    backgroundColor: 'rgba(115, 100, 0, 0.6)',
+  },
+  activeDashboardPulseDotSoft: {
+    backgroundColor: 'rgba(115, 100, 0, 0.32)',
+  },
+  activeDashboardIntensityText: {
+    color: '#696710',
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
+  activeDashboardWalletButton: {
+    minHeight: 46,
+    alignSelf: 'stretch',
+    borderRadius: 10,
+    backgroundColor: '#FFDF00',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 14,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activeDashboardWalletButtonText: {
+    color: '#5C5000',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  activeDashboardDetailsButton: {
+    minHeight: 60,
+    borderRadius: 10,
+    backgroundColor: '#0F0F00',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 16,
+    shadowColor: '#0F0F00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  activeDashboardDetailsButtonText: {
+    color: '#FFFBFF',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  activeDashboardDetailsList: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C0BD5F33',
+    backgroundColor: '#FFFBFF',
+    paddingHorizontal: 14,
+    marginBottom: 20,
+  },
+  activeDashboardDetailRow: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(192, 189, 95, 0.18)',
+  },
+  activeDashboardDetailRowLast: {
+    borderBottomWidth: 0,
+  },
+  activeDashboardDetailLabel: {
+    color: '#696710',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  activeDashboardDetailValue: {
+    color: '#3B3A00',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  activeDashboardRainValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  activeDashboardRainValue: {
+    color: '#5E6A32',
+    fontSize: 12,
+    fontWeight: '900',
+  },
 
   activeProtectionSection: {
     marginTop: 20,
