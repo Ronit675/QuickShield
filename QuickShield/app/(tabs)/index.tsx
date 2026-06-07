@@ -18,7 +18,7 @@ export default function IndexRoute() {
     if (isLoading) return;
 
     if (!user) {
-      router.replace('/login');
+      router.replace('/welcome');
       return;
     }
 

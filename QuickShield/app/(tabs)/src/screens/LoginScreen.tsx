@@ -1,15 +1,29 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, ActivityIndicator, Alert, Dimensions, TextInput, KeyboardAvoidingView, Platform,
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { requestPhoneOtp, signInWithGoogle, signInWithPhoneOtp, type AuthUser } from '../services/auth.service';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../directory/Languagecontext';
+import { requestPhoneOtp, signInWithGoogle, signInWithPhoneOtp, type AuthUser } from '../services/auth.service';
 
-const { width } = Dimensions.get('window');
-type LoginMethod = 'google' | 'phone';
+const HERO_IMAGE = {
+  uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjUuLVf2vyCImwjHBcp4QJPFAbSa1U-mJY77Yoept9ufhNprArWdBwMKq8KhVy5kqidW43YpmX_T096IyITWxGVSbXrjvn0JIpXuq7OCOGXtA42eMPo_0UUAWNT8l1YgmEi93GGTYPNz3yxqQOLRvrbALz-EYSwYkaHvtCtmog8voYInKeloz1sDlCFQ927UmoYR4IzRrvTjQpzXb9gEhC28nMab2VIe2abtXDku1M95XGNuL6MIKQuNvjPEmf2XHS0233vokgnF1w',
+};
 
 const sanitizePhoneInput = (value: string) => {
   const trimmed = value.replace(/[^\d+]/g, '');
@@ -23,7 +37,6 @@ const sanitizePhoneInput = (value: string) => {
 export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('google');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
@@ -86,329 +99,339 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0F" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.glow} />
-
-      <View style={styles.logoArea}>
-        <View style={styles.shieldIcon}>
-          <Text style={styles.shieldText}>QS</Text>
-        </View>
-        <Text style={styles.appName}>QuickShield</Text>
-        <Text style={styles.tagline}>{t('login.tagline')}</Text>
+      <View style={styles.header}>
+        <MaterialCommunityIcons name="shield-outline" size={27} color="#B59E00" />
+        <Text style={styles.brand}>QuickShield</Text>
       </View>
 
-      <View style={styles.props}>
-        {[
-          { icon: '⚡', text: t('login.propAutoPayout') },
-          { icon: '🌧', text: t('login.propWeatherTriggers') },
-          { icon: '₹', text: t('login.propFromPrice') },
-        ].map((item) => (
-          <View key={item.text} style={styles.propRow}>
-            <Text style={styles.propIcon}>{item.icon}</Text>
-            <Text style={styles.propText}>{item.text}</Text>
-          </View>
-        ))}
-      </View>
+      <KeyboardAvoidingView
+        style={styles.keyboardArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <ImageBackground source={HERO_IMAGE} imageStyle={styles.heroImage} style={styles.hero}>
+            <View style={styles.heroWash} />
+            <View style={styles.heroText}>
+              <Text style={styles.heroTitle}>{t('login.welcome')}</Text>
+              <Text style={styles.heroSubtitle}>{t('login.protectionTagline')}</Text>
+            </View>
+          </ImageBackground>
 
-      <View style={styles.authCard}>
-        <View style={styles.methodTabs}>
-          <TouchableOpacity
-            style={[styles.methodTab, loginMethod === 'google' && styles.methodTabActive]}
-            onPress={() => setLoginMethod('google')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.methodTabText, loginMethod === 'google' && styles.methodTabTextActive]}>
-              {t('login.methodGoogle')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.methodTab, loginMethod === 'phone' && styles.methodTabActive]}
-            onPress={() => setLoginMethod('phone')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.methodTabText, loginMethod === 'phone' && styles.methodTabTextActive]}>
-              {t('login.methodPhoneOtp')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('login.mobileNumber')}</Text>
+              <View style={styles.inputShell}>
+                <TextInput
+                  value={phone}
+                  onChangeText={(value) => {
+                    setPhone(sanitizePhoneInput(value));
+                    if (otpRequested) {
+                      setOtpRequested(false);
+                      setOtp('');
+                      setNormalizedPhone('');
+                    }
+                  }}
+                  placeholder={t('login.phonePlaceholder')}
+                  placeholderTextColor="#A8A55A"
+                  keyboardType="phone-pad"
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <MaterialCommunityIcons name="cellphone" size={21} color="#96933F" />
+              </View>
+            </View>
 
-        {loginMethod === 'google' ? (
-          <TouchableOpacity
-            style={[styles.googleBtn, googleLoading && styles.actionDisabled]}
-            onPress={handleGoogleSignIn}
-            disabled={googleLoading || phoneLoading}
-            activeOpacity={0.85}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#0A0A0F" />
-            ) : (
-              <>
-                <Text style={styles.googleG}>G</Text>
-                <Text style={styles.googleBtnText}>{t('login.continueGoogle')}</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.phoneSection}>
-            <Text style={styles.inputLabel}>{t('login.mobileNumber')}</Text>
-            <TextInput
-              value={phone}
-              onChangeText={(value) => {
-                setPhone(sanitizePhoneInput(value));
-                if (otpRequested) {
-                  setOtpRequested(false);
-                  setOtp('');
-                  setNormalizedPhone('');
-                }
-              }}
-              placeholder={t('login.phonePlaceholder')}
-              placeholderTextColor="#4B5563"
-              keyboardType="phone-pad"
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            {otpRequested && (
-              <>
-                <Text style={styles.inputLabel}>{t('login.otpLabel')}</Text>
+            <View style={styles.field}>
+              <View style={styles.otpLabelRow}>
+                <Text style={styles.label}>{t('login.otpLabel')}</Text>
+                {otpRequested && (
+                  <TouchableOpacity onPress={handleRequestOtp} disabled={phoneLoading} activeOpacity={0.7}>
+                    <Text style={styles.resendText}>{t('login.resendOtp')}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={[styles.inputShell, !otpRequested && styles.inputShellDisabled]}>
                 <TextInput
                   value={otp}
                   onChangeText={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
                   placeholder={t('login.otpPlaceholder')}
-                  placeholderTextColor="#4B5563"
+                  placeholderTextColor="#A8A55A"
                   keyboardType="number-pad"
                   style={styles.input}
                   maxLength={6}
+                  editable={otpRequested}
                 />
+                <MaterialCommunityIcons name="lock-outline" size={20} color="#96933F" />
+              </View>
+              {otpRequested && (
                 <Text style={styles.helperText}>
                   {t('login.verifying', { phone: normalizedPhone || phone })}
                 </Text>
-              </>
-            )}
+              )}
+            </View>
 
             <TouchableOpacity
-              style={[styles.primaryBtn, phoneLoading && styles.actionDisabled]}
+              style={[styles.primaryButton, phoneLoading && styles.actionDisabled]}
               onPress={otpRequested ? handleVerifyOtp : handleRequestOtp}
               disabled={phoneLoading || googleLoading}
               activeOpacity={0.85}
             >
               {phoneLoading ? (
-                <ActivityIndicator color="#0A0A0F" />
+                <ActivityIndicator color="#5C5000" />
               ) : (
-                <Text style={styles.primaryBtnText}>
+                <Text style={styles.primaryButtonText}>
                   {otpRequested ? t('login.verifyOtp') : t('login.sendOtp')}
                 </Text>
               )}
             </TouchableOpacity>
-
-            {otpRequested && (
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={handleRequestOtp}
-                disabled={phoneLoading}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.secondaryBtnText}>{t('login.resendOtp')}</Text>
-              </TouchableOpacity>
-            )}
           </View>
-        )}
-      </View>
 
-      <View style={styles.bottom}>
-        <Text style={styles.disclaimer}>
-          {t('login.terms')}
-        </Text>
-      </View>
-    </KeyboardAvoidingView>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t('login.orContinueWith')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleButton, googleLoading && styles.actionDisabled]}
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading || phoneLoading}
+            activeOpacity={0.85}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#3B3A00" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="google" size={21} color="#4285F4" />
+                <Text style={styles.googleButtonText}>{t('login.methodGoogle')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.terms}>{t('login.terms')}</Text>
+
+          <View style={styles.securityCard}>
+            <View style={styles.securityIcon}>
+              <MaterialCommunityIcons name="shield-check-outline" size={22} color="#5C5000" />
+            </View>
+            <View style={styles.securityText}>
+              <Text style={styles.securityTitle}>{t('login.secureConnection')}</Text>
+              <Text style={styles.securityDescription}>{t('login.encryptedData')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
-    paddingHorizontal: 28,
+    backgroundColor: '#FFFFFF',
   },
-  glow: {
-    position: 'absolute',
-    top: -80,
-    left: width * 0.1,
-    width: width * 0.8,
-    height: 300,
-    borderRadius: 200,
-    backgroundColor: '#00E5A0',
-    opacity: 0.06,
-  },
-  logoArea: {
+  keyboardArea: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#FFFBFF',
+  },
+  header: {
+    height: 62,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
+    gap: 8,
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F1EA',
   },
-  shieldIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: '#00E5A0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  shieldText: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0A0A0F',
-    letterSpacing: 1,
-  },
-  appName: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  brand: {
+    color: '#B59E00',
+    fontSize: 20,
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
-  tagline: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 8,
-    letterSpacing: 0.2,
+  content: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 28,
   },
-  props: {
-    marginBottom: 28,
+  hero: {
+    height: 192,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderRadius: 14,
+    backgroundColor: '#ECE942',
+    marginBottom: 32,
   },
-  propRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#13131A',
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#1E1E2E',
-  },
-  propIcon: {
-    fontSize: 20,
-    marginRight: 14,
-  },
-  propText: {
-    fontSize: 15,
-    color: '#D1D5DB',
-    fontWeight: '500',
-  },
-  authCard: {
-    backgroundColor: '#11131B',
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1E2432',
-    gap: 16,
-  },
-  methodTabs: {
-    flexDirection: 'row',
-    backgroundColor: '#0A0F18',
-    padding: 4,
+  heroImage: {
     borderRadius: 14,
   },
-  methodTab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
+  heroWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 251, 255, 0.42)',
   },
-  methodTabActive: {
-    backgroundColor: '#00E5A0',
+  heroText: {
+    paddingHorizontal: 20,
+    paddingBottom: 18,
   },
-  methodTabText: {
-    color: '#9CA3AF',
+  heroTitle: {
+    color: '#3B3A00',
+    fontSize: 27,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    lineHeight: 33,
+  },
+  heroSubtitle: {
+    color: '#696710',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+    marginTop: 4,
   },
-  methodTabTextActive: {
-    color: '#091018',
+  form: {
+    gap: 18,
   },
-  phoneSection: {
+  field: {
+    gap: 8,
+  },
+  label: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  otpLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resendText: {
+    color: '#736400',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 4,
+  },
+  inputShell: {
+    height: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C0BD5F',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 15,
+  },
+  inputShellDisabled: {
+    opacity: 0.58,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
+    color: '#3B3A00',
+    fontSize: 16,
+    paddingRight: 10,
+  },
+  helperText: {
+    color: '#86842C',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  primaryButton: {
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: '#FFDF00',
+    marginTop: 2,
+  },
+  primaryButtonText: {
+    color: '#5C5000',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  actionDisabled: {
+    opacity: 0.58,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    marginVertical: 30,
   },
-  inputLabel: {
-    color: '#D1D5DB',
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#C0BD5F',
+  },
+  dividerText: {
+    color: '#696710',
     fontSize: 13,
     fontWeight: '600',
   },
-  input: {
-    height: 54,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#273041',
-    backgroundColor: '#0A0F18',
-    color: '#FFFFFF',
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  helperText: {
-    color: '#6B7280',
-    fontSize: 12,
-    marginTop: -2,
-  },
-  bottom: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 48,
-  },
-  googleBtn: {
+  googleButton: {
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00E5A0',
+    gap: 11,
+    borderWidth: 1,
+    borderColor: '#C0BD5F',
     borderRadius: 14,
-    height: 56,
-    gap: 10,
+    backgroundColor: '#FFFBFF',
   },
-  actionDisabled: {
-    opacity: 0.6,
-  },
-  googleG: {
-    fontSize: 18,
+  googleButtonText: {
+    color: '#3B3A00',
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0A0A0F',
   },
-  googleBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0A0A0F',
-    letterSpacing: 0.2,
-  },
-  primaryBtn: {
-    height: 56,
-    backgroundColor: '#00E5A0',
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  primaryBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0A0A0F',
-  },
-  secondaryBtn: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  secondaryBtnText: {
-    color: '#8EECCD',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  disclaimer: {
+  terms: {
+    color: '#86842C',
+    fontSize: 11,
+    lineHeight: 16,
     textAlign: 'center',
-    color: '#4B5563',
+    marginTop: 18,
+  },
+  securityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.45)',
+    borderRadius: 16,
+    backgroundColor: '#FFFCCB',
+    marginTop: 30,
+  },
+  securityIcon: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#FFDF00',
+  },
+  securityText: {
+    flex: 1,
+    gap: 2,
+  },
+  securityTitle: {
+    color: '#3B3A00',
     fontSize: 12,
+    fontWeight: '800',
+  },
+  securityDescription: {
+    color: '#696710',
+    fontSize: 10,
+    lineHeight: 14,
   },
 });
