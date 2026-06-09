@@ -84,124 +84,57 @@ export default function HistoryScreen({ isActive = false, bottomInset = 40 }: Hi
     return acc;
   }, []);
 
-  const hasRealData = history.length > 0 && totalClaimsList.length > 0;
 
   // Bento Card 1: Covered Hours
   const totalCoveredHours = totalClaimsList.length * (user?.workingHours ?? 8);
-  const displayCoveredHours = hasRealData ? totalCoveredHours.toFixed(1) : '32.5';
+  const displayCoveredHours = totalCoveredHours.toFixed(1);
 
   // Bento Card 2: Earned Payouts
   const totalEarnedAmount = totalClaimsList
     .filter((c) => c.status === 'paid' || c.status === 'auto_approved')
     .reduce((sum, c) => sum + c.payoutAmount, 0);
-  const displayEarnedPayout = hasRealData ? formatCurrency(totalEarnedAmount) : '₹12,450.00';
+  const displayEarnedPayout = formatCurrency(totalEarnedAmount);
 
   // Build the Recent Activity items
   const activityEvents: ActivityEvent[] = [];
 
-  if (hasRealData) {
-    // Construct events dynamically from real policies and claims
-    history.forEach((policy) => {
-      const claims = policy.claims ?? [];
-      const weekDate = new Date(policy.weekStartDate);
+  // Construct events dynamically from real policies and claims
+  history.forEach((policy) => {
+    const claims = policy.claims ?? [];
+    const weekDate = new Date(policy.weekStartDate);
 
-      // Add a Shift Coverage entry for the policy week
-      activityEvents.push({
-        id: `shift-${policy.id}`,
-        title: t('history.shiftCoverage'),
-        subtitle: `${formatDate(policy.weekStartDate)} - ${formatDate(policy.weekEndDate)}`,
-        amountText: t('history.hoursLogged', { hours: String(claims.length * (user?.workingHours ?? 8)) }),
-        statusText: t('history.verified'),
-        statusType: 'info',
-        icon: 'time-outline',
-        timestamp: weekDate.getTime(),
-      });
-
-      // Add separate entries for payout claims
-      claims.forEach((claim, idx) => {
-        const claimDate = new Date(claim.createdAt);
-        const isPaid = claim.status === 'paid' || claim.status === 'auto_approved';
-        
-        activityEvents.push({
-          id: `claim-${policy.id}-${idx}`,
-          title: claim.triggerType === 'rain' ? t('history.weatherSurgeBonus') : t('history.weeklyPayout'),
-          subtitle: formatDate(claim.createdAt),
-          amountText: `+${formatCurrency(claim.payoutAmount)}`,
-          statusText: isPaid ? t('history.sentToWallet') : t('history.cleared'),
-          statusType: isPaid ? 'success' : 'neutral',
-          icon: isPaid ? 'wallet-outline' : 'checkmark-circle-outline',
-          timestamp: claimDate.getTime(),
-        });
-      });
+    // Add a Shift Coverage entry for the policy week
+    activityEvents.push({
+      id: `shift-${policy.id}`,
+      title: t('history.shiftCoverage'),
+      subtitle: `${formatDate(policy.weekStartDate)} - ${formatDate(policy.weekEndDate)}`,
+      amountText: t('history.hoursLogged', { hours: String(claims.length * (user?.workingHours ?? 8)) }),
+      statusText: t('history.verified'),
+      statusType: 'info',
+      icon: 'time-outline',
+      timestamp: weekDate.getTime(),
     });
 
-    // Sort by newest first
-    activityEvents.sort((a, b) => b.timestamp - a.timestamp);
-  } else {
-    // High-fidelity fallback preview list matching Stitch layout
-    activityEvents.push(
-      {
-        id: 'fallback-1',
-        title: t('history.weeklyPayout'),
-        subtitle: 'Oct 24',
-        amountText: '+₹12,800.00',
-        statusText: t('history.sentToWallet'),
-        statusType: 'success',
-        icon: 'wallet-outline',
-        timestamp: 6,
-      },
-      {
-        id: 'fallback-2',
-        title: t('history.shiftCoverage'),
-        subtitle: 'Oct 23',
-        amountText: t('history.hoursLogged', { hours: '8.5' }),
-        statusText: t('history.verified'),
-        statusType: 'info',
-        icon: 'time-outline',
-        timestamp: 5,
-      },
-      {
-        id: 'fallback-3',
-        title: t('history.weatherSurgeBonus'),
-        subtitle: 'Oct 22',
-        amountText: '+₹4,250.00',
-        statusText: t('history.cleared'),
-        statusType: 'neutral',
-        icon: 'thunderstorm-outline',
-        timestamp: 4,
-      },
-      {
-        id: 'fallback-4',
-        title: t('history.weatherSurgeBonus'),
-        subtitle: 'Oct 20',
-        amountText: '+₹3,100.00',
-        statusText: t('history.cleared'),
-        statusType: 'neutral',
-        icon: 'thunderstorm-outline',
-        timestamp: 3,
-      },
-      {
-        id: 'fallback-5',
-        title: t('history.shiftCoverage'),
-        subtitle: 'Oct 19',
-        amountText: t('history.hoursLogged', { hours: '6.0' }),
-        statusText: t('history.verified'),
-        statusType: 'info',
-        icon: 'time-outline',
-        timestamp: 2,
-      },
-      {
-        id: 'fallback-6',
-        title: t('history.weeklyPayout'),
-        subtitle: 'Oct 17',
-        amountText: '+₹9,450.00',
-        statusText: t('history.sentToWallet'),
-        statusType: 'success',
-        icon: 'wallet-outline',
-        timestamp: 1,
-      }
-    );
-  }
+    // Add separate entries for payout claims
+    claims.forEach((claim, idx) => {
+      const claimDate = new Date(claim.createdAt);
+      const isPaid = claim.status === 'paid' || claim.status === 'auto_approved';
+      
+      activityEvents.push({
+        id: `claim-${policy.id}-${idx}`,
+        title: claim.triggerType === 'rain' ? t('history.weatherSurgeBonus') : t('history.weeklyPayout'),
+        subtitle: formatDate(claim.createdAt),
+        amountText: `+${formatCurrency(claim.payoutAmount)}`,
+        statusText: isPaid ? t('history.sentToWallet') : t('history.cleared'),
+        statusType: isPaid ? 'success' : 'neutral',
+        icon: isPaid ? 'wallet-outline' : 'checkmark-circle-outline',
+        timestamp: claimDate.getTime(),
+      });
+    });
+  });
+
+  // Sort by newest first
+  activityEvents.sort((a, b) => b.timestamp - a.timestamp);
 
   const handleLearnMore = () => {
     alert(t('history.increaseEarningsTitle') + '\n\n' + t('history.increaseEarningsDesc'));
@@ -288,7 +221,12 @@ export default function HistoryScreen({ isActive = false, bottomInset = 40 }: Hi
           </View>
 
           <View style={styles.activityList}>
-            {(isExpanded ? activityEvents : activityEvents.slice(0, 3)).map((event) => (
+            {activityEvents.length === 0 ? (
+              <View style={styles.emptyActivityState}>
+                <Text style={styles.emptyActivityText}>No recent activity.</Text>
+              </View>
+            ) :
+              (isExpanded ? activityEvents : activityEvents.slice(0, 3)).map((event) => (
               <View key={event.id} style={styles.activityItem}>
                 <View style={styles.itemLeft}>
                   <View style={styles.itemIconBox}>
@@ -642,5 +580,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  emptyActivityState: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+  },
+  emptyActivityText: {
+    color: '#696710',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

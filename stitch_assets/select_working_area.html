@@ -1,0 +1,192 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QuickShield - Select Working Area</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;700;900&amp;family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@100..900&amp;family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#57622c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#605e00",
+                        "tertiary-container": "#effeb7",
+                        "error-dim": "#b92902",
+                        "background": "#fffbff",
+                        "inverse-primary": "#ffdf00",
+                        "on-secondary-container": "#565400",
+                        "inverse-on-surface": "#a3a146",
+                        "secondary": "#696700",
+                        "on-primary-fixed-variant": "#675900",
+                        "primary-container": "#ffdf00",
+                        "on-error-container": "#520c00",
+                        "tertiary": "#5e6a32",
+                        "surface-variant": "#f1ee68",
+                        "error": "#be2d06",
+                        "surface-container-high": "#f7f376",
+                        "error-container": "#f95630",
+                        "secondary-container": "#ece942",
+                        "tertiary-fixed": "#effeb7",
+                        "surface-dim": "#ebe85b",
+                        "on-tertiary-fixed": "#45501b",
+                        "primary-fixed": "#ffdf00",
+                        "outline-variant": "#c0bd5f",
+                        "surface-container-low": "#fffccb",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#efd100",
+                        "on-primary-container": "#5c5000",
+                        "primary": "#736400",
+                        "on-secondary-fixed": "#424100",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#ddda33",
+                        "secondary-fixed": "#ece942",
+                        "on-surface": "#3b3a00",
+                        "inverse-surface": "#0f0f00",
+                        "outline": "#86842c",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#e1efaa",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#696710",
+                        "surface-container": "#fcf983",
+                        "on-background": "#3b3a00",
+                        "surface": "#fffbff",
+                        "surface-container-highest": "#f1ee68",
+                        "secondary-dim": "#5c5b00",
+                        "on-primary-fixed": "#473d00",
+                        "tertiary-dim": "#525d27",
+                        "primary-dim": "#665800",
+                        "surface-bright": "#fffbff",
+                        "surface-tint": "#736400",
+                        "on-tertiary-fixed-variant": "#616d35"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Domine"],
+                        "display": ["Domine"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #fffbff; }
+        h1, h2, h3 { font-family: 'Domine', serif; }
+        .map-gradient-overlay {
+            background: linear-gradient(to top, rgba(255, 251, 255, 0.4), transparent);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- Progress Header (Transactional flow: No BottomNavBar/SideNav as per mandate) -->
+<header class="w-full bg-white px-4 pt-6 pb-4">
+<div class="flex items-center justify-between mb-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<span class="font-headline font-bold text-lg text-primary">QuickShield</span>
+<div class="w-10"></div> <!-- Spacer for balance -->
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-neutral-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-full rounded-full transition-all duration-700 ease-out"></div>
+</div>
+<p class="text-xs font-label font-semibold text-outline mt-2 tracking-wide">Step 2 of 2</p>
+</header>
+<main class="flex-grow px-4 pb-32">
+<!-- Headline Section -->
+<div class="mt-4 mb-6">
+<h1 class="text-3xl font-black text-on-surface leading-tight">Define your area.</h1>
+<p class="text-on-surface-variant mt-2 leading-relaxed max-w-xs">We use this to track local weather and calculate your shield payouts.</p>
+</div>
+<!-- Search Bar -->
+<div class="relative group mb-6">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary-fixed text-on-surface placeholder:text-outline/70 transition-all shadow-sm" placeholder="Search for a neighborhood or city" type="text">
+</div>
+<!-- Map View Card -->
+
+<!-- Selected Zone Card -->
+<div class="bg-primary-container/30 border border-primary-fixed rounded-xl p-4 flex items-center gap-4 mb-8">
+<div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">pin_drop</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-primary-container uppercase tracking-widest">Selected Zone</p>
+<p class="text-lg font-headline font-bold text-on-surface">Whitefield, Bengaluru</p>
+</div>
+</div>
+<!-- Suggested Zones -->
+<section class="mb-8">
+<h3 class="text-sm font-label font-bold text-outline uppercase tracking-widest mb-4">Suggested Zones</h3>
+<div class="space-y-3">
+<button class="w-full flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-xl hover:border-primary-fixed hover:bg-primary-fixed/5 transition-all group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">location_city</span>
+<span class="font-medium text-on-surface">Indiranagar</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-xl hover:border-primary-fixed hover:bg-primary-fixed/5 transition-all group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">location_city</span>
+<span class="font-medium text-on-surface">Koramangala</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-xl hover:border-primary-fixed hover:bg-primary-fixed/5 transition-all group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">location_city</span>
+<span class="font-medium text-on-surface">Electronic City</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Fixed Action Footer -->
+<footer class="fixed bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t border-neutral-100">
+<button class="w-full py-5 bg-[#c8af05] text-white rounded-xl font-headline font-bold text-lg shadow-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            Confirm &amp; Finish
+            <span class="material-symbols-outlined">check_circle</span>
+</button>
+</footer>
+<script>
+        // Micro-interaction for list items
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.classList.add('scale-95');
+            });
+            btn.addEventListener('touchend', function() {
+                this.classList.remove('scale-95');
+            });
+        });
+
+        // Simple search feedback
+        const searchInput = document.querySelector('input');
+        searchInput.addEventListener('input', (e) => {
+            if(e.target.value.length > 3) {
+                // Potential for dynamic filtering logic
+                console.log('Searching for:', e.target.value);
+            }
+        });
+    </script>
+
+
+</body></html>

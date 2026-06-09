@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert, View, Text, TouchableOpacity, StyleSheet, Modal, ImageBackground,
-  StatusBar, ScrollView, RefreshControl, ActivityIndicator, Pressable,
+  StatusBar, ScrollView, RefreshControl, ActivityIndicator, Pressable, Image,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -553,7 +553,8 @@ export default function HomeScreen({
     isActiveProtectionDashboard ||
     shouldShowInactiveDisruptionDesign ||
     shouldShowPausedPremiumDesign ||
-    (!isPremiumTab && policy?.status === 'active');
+    (!isPremiumTab && policy?.status === 'active') ||
+    (!isPremiumTab && user?.platformConnectionStatus !== 'verified');
   const activeProtectionLocationLabel = [user?.city, user?.serviceZone]
     .filter((value): value is string => Boolean(value?.trim()))
     .join(', ') || 'Mumbai, Maharashtra';
@@ -1149,7 +1150,109 @@ export default function HomeScreen({
           </View>
         )}
 
-        {!isPremiumTab && shouldShowActiveDisruptionDesign && policy?.status === 'active' ? (
+        {!isPremiumTab && user?.platformConnectionStatus !== 'verified' ? (
+          <View style={styles.noPlatformContainer}>
+            {/* Hero Card: Connection Pending */}
+            <View style={styles.noPlatformHeroCard}>
+              <View style={styles.noPlatformIconContainer}>
+                <Ionicons name="link-outline" size={40} color="#5C5000" style={{ transform: [{ rotate: '135deg' }] }} />
+              </View>
+              <Text style={styles.noPlatformTitle}>No Platform Connected</Text>
+              <Text style={styles.noPlatformSubtitle}>
+                Link your delivery or ride-sharing platform to enable weather protection and start earning surge payouts.
+              </Text>
+              <TouchableOpacity
+                style={styles.noPlatformConnectBtn}
+                onPress={() => router.push('/platform-connect')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="link" size={18} color="#5C5000" style={{ marginRight: 6 }} />
+                <Text style={styles.noPlatformConnectBtnText}>Connect Platform</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Stats Placeholder (Blurred) */}
+            <View style={styles.noPlatformStatsRow}>
+              {/* Covered Hours Bento Card */}
+              <View style={styles.noPlatformStatCard}>
+                <View style={styles.noPlatformStatHeader}>
+                  <Text style={styles.noPlatformStatLabel}>Covered Hours</Text>
+                  <Ionicons name="time-outline" size={14} color="#696710" />
+                </View>
+                <View style={styles.blurredStatsContainer}>
+                  <View style={styles.blurredStatsTextWrap}>
+                    <Text style={styles.blurredStatValue}>124.5</Text>
+                    <Text style={styles.blurredStatSubtitle}>+12.3 this week</Text>
+                  </View>
+                  <BlurView intensity={20} tint="light" style={styles.blurOverlay} />
+                  <View style={styles.lockOverlay}>
+                    <Ionicons name="lock-closed" size={18} color="#696710" />
+                  </View>
+                </View>
+              </View>
+
+              {/* Earned Bento Card */}
+              <View style={styles.noPlatformStatCard}>
+                <View style={styles.noPlatformStatHeader}>
+                  <Text style={styles.noPlatformStatLabel}>Earned</Text>
+                  <Ionicons name="cash-outline" size={14} color="#696710" />
+                </View>
+                <View style={styles.blurredStatsContainer}>
+                  <View style={styles.blurredStatsTextWrap}>
+                    <Text style={styles.blurredStatValue}>₹412.00</Text>
+                    <Text style={styles.blurredStatSubtitle}>Pending approval</Text>
+                  </View>
+                  <BlurView intensity={20} tint="light" style={styles.blurOverlay} />
+                  <View style={styles.lockOverlay}>
+                    <Ionicons name="lock-closed" size={18} color="#696710" />
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Why connect? Section */}
+            <View style={styles.whyConnectSection}>
+              <Text style={styles.whyConnectSectionTitle}>Why connect?</Text>
+              
+              {/* Benefit 1 */}
+              <View style={styles.benefitCardTertiary}>
+                <View style={styles.benefitIconBoxTertiary}>
+                  <Ionicons name="cloud-done" size={20} color="#57622C" />
+                </View>
+                <View style={styles.benefitTextColumn}>
+                  <Text style={styles.benefitCardTitleTertiary}>Real-time Weather Sync</Text>
+                  <Text style={styles.benefitCardDescTertiary}>
+                    We track local weather data against your active gig shifts automatically.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Benefit 2 */}
+              <View style={styles.benefitCardSecondary}>
+                <View style={styles.benefitIconBoxSecondary}>
+                  <Ionicons name="flash" size={20} color="#565400" />
+                </View>
+                <View style={styles.benefitTextColumn}>
+                  <Text style={styles.benefitCardTitleSecondary}>Instant Surge Payouts</Text>
+                  <Text style={styles.benefitCardDescSecondary}>
+                    Get paid directly when rain or extreme heat hits during your scheduled hours.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Illustrative Banner */}
+            <View style={styles.riderBannerContainer}>
+              <Image
+                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCeAZEV5iNcqdgURpX8UycY_7FKRHYpprbPEPWqg9VEs-nsa_Dkq24wOkCYzjor7-05Gl168Z5p4nleVmTTfrNwRA4-p4wVWo_Bh1eJWuBKZfm96KBiir6GHeWEL2qpkIufM8-4rh62sDzoSrSYpwQhYPNNe0HhciEimAuLuoEUcXQsCMcqHgsYSyXU2Lmqp5OrqCpBYJYgs8731e_vkDhlQFCxfn56w2guRXqdfzA_jCgfL8AY3t2eOynZuUBKg1tM9SrdFXEcqWuM' }}
+                style={styles.riderBannerImage}
+              />
+              <View style={styles.riderBannerOverlay}>
+                <Text style={styles.riderBannerText}>Join 50k+ riders protected today.</Text>
+              </View>
+            </View>
+          </View>
+        ) : !isPremiumTab && shouldShowActiveDisruptionDesign && policy?.status === 'active' ? (
           <View style={styles.activeDashboardContent}>
             <View style={styles.hiddenRainDisruptionSync}>
               <RainDisruptionCard
@@ -1467,7 +1570,7 @@ export default function HomeScreen({
                       <Text style={styles.bentoStatVal}>
                         {claims.length > 0
                           ? (claims.length * (user?.workingHours ?? 8)).toFixed(1)
-                          : '32.5'}
+                          : '0.0'}
                       </Text>
                       <Text style={styles.bentoStatUnit}> hrs</Text>
                     </View>
@@ -1507,44 +1610,42 @@ export default function HomeScreen({
                   </TouchableOpacity>
                 </View>
                 <View style={styles.activityList}>
-                  {/* Activity Item 1: Weekly Payout */}
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityItemLeft}>
-                      <View style={styles.activityItemIconBox}>
-                        <Ionicons name="card" size={18} color="#736400" />
-                      </View>
-                      <View>
-                        <Text style={styles.activityItemTitle}>Weekly Payout</Text>
-                        <Text style={styles.activityItemSubtitle}>
-                          Oct 24 • Sent to Wallet
-                        </Text>
-                      </View>
+                  {claims.length === 0 ? (
+                    <View style={styles.emptyActivityState}>
+                      <Text style={styles.emptyActivityText}>No recent activity.</Text>
                     </View>
-                    <Text style={styles.activityItemAmount}>+₹128.00</Text>
-                  </View>
-
-                  {/* Activity Item 2: Shift Coverage */}
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityItemLeft}>
-                      <View
-                        style={[
-                          styles.activityItemIconBox,
-                          { backgroundColor: '#EFFEB7' },
-                        ]}
-                      >
-                        <Ionicons name="checkmark-circle" size={18} color="#45501B" />
+                  ) : (
+                    claims.slice(0, 3).map((claim, idx) => (
+                      <View key={idx} style={styles.activityItem}>
+                        <View style={styles.activityItemLeft}>
+                          <View
+                            style={[
+                              styles.activityItemIconBox,
+                              claim.triggerType === 'rain' && { backgroundColor: '#EFFEB7' },
+                            ]}
+                          >
+                            <Ionicons
+                              name={claim.triggerType === 'rain' ? 'shield-checkmark' : 'card'}
+                              size={18}
+                              color={claim.triggerType === 'rain' ? '#45501B' : '#736400'}
+                            />
+                          </View>
+                          <View>
+                            <Text style={styles.activityItemTitle}>
+                              {claim.triggerType === 'rain' ? 'Rain Shield Payout' : 'Weekly Payout'}
+                            </Text>
+                            <Text style={styles.activityItemSubtitle}>
+                              {new Date(claim.createdAt).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                              })} • {claim.status.replace('_', ' ')}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.activityItemAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
                       </View>
-                      <View>
-                        <Text style={styles.activityItemTitle}>Shift Coverage</Text>
-                        <Text style={styles.activityItemSubtitle}>
-                          Oct 23 • 8.5 Hours logged
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.activityStatusPill}>
-                      <Text style={styles.activityStatusText}>Verified</Text>
-                    </View>
-                  </View>
+                    ))
+                  )}
                 </View>
               </View>
             </View>
@@ -1695,7 +1796,7 @@ export default function HomeScreen({
                   <View>
                     <Text style={styles.bentoStatLabel}>Earned</Text>
                     <Text style={styles.bentoStatVal}>
-                      {formatCurrency(totalPaidOut || 1240)}
+                      {formatCurrency(totalPaidOut)}
                     </Text>
                   </View>
                 </View>
@@ -1715,42 +1816,42 @@ export default function HomeScreen({
                   </TouchableOpacity>
                 </View>
                 <View style={styles.activityList}>
-                  {/* Activity Item 1: Weekly Payout */}
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityItemLeft}>
-                      <View style={styles.activityItemIconBox}>
-                        <Ionicons name="wallet" size={18} color="#736400" />
-                      </View>
-                      <View>
-                        <Text style={styles.activityItemTitle}>Weekly Payout</Text>
-                        <Text style={styles.activityItemSubtitle}>
-                          Completed • Oct 12
-                        </Text>
-                      </View>
+                  {claims.length === 0 ? (
+                    <View style={styles.emptyActivityState}>
+                      <Text style={styles.emptyActivityText}>No recent activity.</Text>
                     </View>
-                    <Text style={styles.activityItemAmount}>+₹420.00</Text>
-                  </View>
-
-                  {/* Activity Item 2: Safety Reward */}
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityItemLeft}>
-                      <View
-                        style={[
-                          styles.activityItemIconBox,
-                          { backgroundColor: '#EFFEB7' },
-                        ]}
-                      >
-                        <Ionicons name="shield-checkmark" size={18} color="#45501B" />
+                  ) : (
+                    claims.slice(0, 3).map((claim, idx) => (
+                      <View key={idx} style={styles.activityItem}>
+                        <View style={styles.activityItemLeft}>
+                          <View
+                            style={[
+                              styles.activityItemIconBox,
+                              claim.triggerType === 'rain' && { backgroundColor: '#EFFEB7' },
+                            ]}
+                          >
+                            <Ionicons
+                              name={claim.triggerType === 'rain' ? 'shield-checkmark' : 'wallet'}
+                              size={18}
+                              color={claim.triggerType === 'rain' ? '#45501B' : '#736400'}
+                            />
+                          </View>
+                          <View>
+                            <Text style={styles.activityItemTitle}>
+                              {claim.triggerType === 'rain' ? 'Rain Shield Payout' : 'Weekly Payout'}
+                            </Text>
+                            <Text style={styles.activityItemSubtitle}>
+                              {new Date(claim.createdAt).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                              })} • {claim.status.replace('_', ' ')}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.activityItemAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
                       </View>
-                      <View>
-                        <Text style={styles.activityItemTitle}>Safety Reward</Text>
-                        <Text style={styles.activityItemSubtitle}>
-                          Credited • Oct 10
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.activityItemAmount, { color: '#5E6A32' }]}>+₹15.00</Text>
-                  </View>
+                    ))
+                  )}
                 </View>
               </View>
             </View>
@@ -4288,6 +4389,235 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
     lineHeight: 16,
+  },
+  noPlatformContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 20,
+  },
+  noPlatformHeroCard: {
+    backgroundColor: '#fffccb',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192, 189, 95, 0.25)',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  noPlatformIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#ffdf00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  noPlatformTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#3b3a00',
+    textAlign: 'center',
+  },
+  noPlatformSubtitle: {
+    fontSize: 13,
+    color: '#696710',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+  },
+  noPlatformConnectBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#ffdf00',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  noPlatformConnectBtnText: {
+    color: '#5c5000',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  noPlatformStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  noPlatformStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.15)',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  noPlatformStatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  noPlatformStatLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#696710',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  blurredStatsContainer: {
+    position: 'relative',
+    height: 60,
+    justifyContent: 'center',
+  },
+  blurredStatsTextWrap: {
+    opacity: 0.12,
+  },
+  blurredStatValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#3b3a00',
+  },
+  blurredStatSubtitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#696710',
+    marginTop: 2,
+  },
+  blurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  whyConnectSection: {
+    gap: 12,
+  },
+  whyConnectSectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#3B3A00',
+    marginBottom: 4,
+  },
+  benefitCardTertiary: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(239, 254, 183, 0.3)',
+    borderWidth: 1,
+    borderColor: '#e1efaa',
+  },
+  benefitIconBoxTertiary: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#effeb7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitCardSecondary: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(236, 233, 66, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 233, 66, 0.25)',
+  },
+  benefitIconBoxSecondary: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: 'rgba(236, 233, 66, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitTextColumn: {
+    flex: 1,
+    gap: 4,
+  },
+  benefitCardTitleTertiary: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#45501b',
+  },
+  benefitCardDescTertiary: {
+    fontSize: 12,
+    color: '#616d35',
+    lineHeight: 16,
+  },
+  benefitCardTitleSecondary: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#565400',
+  },
+  benefitCardDescSecondary: {
+    fontSize: 12,
+    color: '#605e00',
+    lineHeight: 16,
+  },
+  riderBannerContainer: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginTop: 4,
+  },
+  riderBannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  riderBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(59, 58, 0, 0.45)',
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  riderBannerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    fontStyle: 'italic',
+  },
+  emptyActivityState: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.15)',
+  },
+  emptyActivityText: {
+    color: '#696710',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
 

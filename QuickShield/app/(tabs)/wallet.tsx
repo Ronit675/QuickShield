@@ -83,57 +83,18 @@ export default function WalletScreen() {
     .filter((c) => c.status === 'pending_review')
     .reduce((s, c) => s + c.payoutAmount, 0);
 
-  // If there are no real claims, show the mock values for high-fidelity demonstration,
-  // but if the user has real claims, show the real balances!
-  const hasRealClaims = claims.length > 0;
-  
-  // Total balance: real completed claims, or a mock standard balance if 0
-  const totalBalance = hasRealClaims ? completedClaimsAmount : 1240.50;
-  const pendingPayout = hasRealClaims ? pendingClaimsAmount : 320.00;
+  const totalBalance = completedClaimsAmount;
+  const pendingPayout = pendingClaimsAmount;
 
-  // Activities: combine real claims (first) and then mock claims if none or supplementary
-  const activityList = [];
-
-  if (hasRealClaims) {
-    claims.forEach((claim) => {
-      activityList.push({
-        id: claim.id,
-        title: claim.triggerType === 'rain' ? 'Rain Shield Payout' : 'Outage Payout',
-        date: formatDateTime(claim.createdAt),
-        amount: `+${formatCurrency(claim.payoutAmount)}`,
-        status: claim.status === 'pending_review' ? 'Pending' : 'Completed',
-        isPositive: true,
-      });
-    });
-  } else {
-    // Standard mock list from HTML design
-    activityList.push(
-      {
-        id: 'mock-1',
-        title: 'Rain Shield Payout',
-        date: 'Oct 24, 2023',
-        amount: `+₹145.00`,
-        status: 'Completed',
-        isPositive: true,
-      },
-      {
-        id: 'mock-2',
-        title: 'Weekly Earnings',
-        date: 'Oct 22, 2023',
-        amount: `+₹450.20`,
-        status: 'Completed',
-        isPositive: true,
-      },
-      {
-        id: 'mock-3',
-        title: 'Withdrawal to Bank',
-        date: 'Oct 20, 2023',
-        amount: `-₹200.00`,
-        status: 'Pending',
-        isPositive: false,
-      }
-    );
-  }
+  // Activities: actual claims only
+  const activityList = claims.map((claim) => ({
+    id: claim.id,
+    title: claim.triggerType === 'rain' ? 'Rain Shield Payout' : 'Outage Payout',
+    date: formatDateTime(claim.createdAt),
+    amount: `+${formatCurrency(claim.payoutAmount)}`,
+    status: claim.status === 'pending_review' ? 'Pending' : 'Completed',
+    isPositive: true,
+  }));
 
   const handleWithdraw = () => {
     Alert.alert(
@@ -185,7 +146,7 @@ export default function WalletScreen() {
                 <Text style={styles.pendingEyebrow}>Pending Payout</Text>
                 <Text style={styles.pendingValue}>{formatCurrency(pendingPayout)}</Text>
               </View>
-              {hasRealClaims && completedClaimsAmount > 0 && (
+              {completedClaimsAmount > 0 && (
                 <View style={styles.badgeSuccess}>
                   <Text style={styles.badgeSuccessText}>Ready</Text>
                 </View>
@@ -229,9 +190,14 @@ export default function WalletScreen() {
             </View>
 
             <View style={styles.activityList}>
-              {activityList.map((item) => (
-                <View key={item.id} style={styles.activityItem}>
-                  <View style={styles.activityLeft}>
+              {activityList.length === 0 ? (
+                <View style={styles.emptyActivityState}>
+                  <Text style={styles.emptyActivityText}>No recent activity.</Text>
+                </View>
+              ) :
+                activityList.map((item) => (
+                  <View key={item.id} style={styles.activityItem}>
+                    <View style={styles.activityLeft}>
                     <View
                       style={[
                         styles.activityIconWrap,
@@ -548,16 +514,29 @@ const styles = StyleSheet.create({
   statusPending: {
     backgroundColor: 'rgba(115, 100, 0, 0.1)',
   },
-  statusCompletedText: {
-    color: '#5E6A32',
+  statusPillText: {
     fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
+  statusCompletedText: {
+    color: '#5E6A32',
+  },
   statusPendingText: {
     color: '#736400',
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+  },
+  emptyActivityState: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 189, 95, 0.15)',
+  },
+  emptyActivityText: {
+    color: '#696710',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

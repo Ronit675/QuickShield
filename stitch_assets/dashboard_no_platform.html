@@ -1,0 +1,239 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QuickShield Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;700;900&amp;family=Inter:wght@300;400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed-dim": "#e1efaa",
+                      "error": "#be2d06",
+                      "outline-variant": "#c0bd5f",
+                      "inverse-on-surface": "#a3a146",
+                      "on-surface": "#3b3a00",
+                      "tertiary-container": "#effeb7",
+                      "on-surface-variant": "#696710",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#424100",
+                      "surface-container-lowest": "#ffffff",
+                      "on-background": "#3b3a00",
+                      "surface": "#fffbff",
+                      "inverse-surface": "#0f0f00",
+                      "surface-dim": "#ebe85b",
+                      "surface-container": "#fcf983",
+                      "primary-fixed-dim": "#efd100",
+                      "tertiary": "#5e6a32",
+                      "outline": "#86842c",
+                      "on-tertiary-fixed": "#45501b",
+                      "error-container": "#f95630",
+                      "surface-container-low": "#fffccb",
+                      "on-primary-container": "#5c5000",
+                      "surface-bright": "#fffbff",
+                      "secondary-fixed-dim": "#ddda33",
+                      "on-primary-fixed": "#473d00",
+                      "on-tertiary-fixed-variant": "#616d35",
+                      "secondary": "#696700",
+                      "tertiary-fixed": "#effeb7",
+                      "secondary-dim": "#5c5b00",
+                      "primary-fixed": "#ffdf00",
+                      "on-error": "#ffffff",
+                      "surface-container-highest": "#f1ee68",
+                      "on-secondary-fixed-variant": "#605e00",
+                      "primary": "#736400",
+                      "secondary-fixed": "#ece942",
+                      "on-secondary-container": "#565400",
+                      "surface-tint": "#736400",
+                      "surface-variant": "#f1ee68",
+                      "surface-container-high": "#f7f376",
+                      "on-tertiary-container": "#57622c",
+                      "primary-container": "#ffdf00",
+                      "on-primary-fixed-variant": "#675900",
+                      "tertiary-dim": "#525d27",
+                      "secondary-container": "#ece942",
+                      "error-dim": "#b92902",
+                      "background": "#fffbff",
+                      "on-primary": "#ffffff",
+                      "on-error-container": "#520c00",
+                      "primary-dim": "#665800",
+                      "on-secondary": "#ffffff",
+                      "inverse-primary": "#ffdf00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Domine", "serif"],
+                      "display": ["Domine", "serif"],
+                      "body": ["Inter", "sans-serif"],
+                      "label": ["Inter", "sans-serif"]
+              },
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .blur-stats {
+            filter: blur(8px);
+            user-select: none;
+            pointer-events: none;
+        }
+        .vibrant-gradient {
+            background: linear-gradient(135deg, #ffdf00 0%, #ece942 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen pb-24">
+<!-- TopAppBar -->
+<div class="flex items-center bg-white p-4 pb-2 justify-between">
+<div class="text-on-surface flex size-12 shrink-0 items-center" data-icon="List" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined">list</span>
+</div>
+<h2 class="text-on-surface text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center font-headline">QuickShield</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-transparent text-on-surface gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<div class="text-on-surface" data-icon="UserCircle" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+</button>
+</div>
+</div>
+<main class="px-6 pt-4 space-y-6">
+<!-- Hero Section: Connection Pending -->
+<section class="relative overflow-hidden rounded-xl bg-surface-container-low border border-outline-variant/20 p-8 text-center flex flex-col items-center">
+<!-- Animated Background Shader (Ambient Glow) -->
+
+<div class="relative z-10 space-y-6">
+<div class="w-24 h-24 bg-primary-container rounded-full flex items-center justify-center mx-auto shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container text-5xl" style="font-variation-settings: 'FILL' 1;">link_off</span>
+</div>
+<div class="space-y-2">
+<h2 class="font-headline text-2xl font-black text-on-surface">No Platform Connected</h2>
+<p class="text-on-surface-variant text-sm leading-relaxed max-w-xs mx-auto">
+                        Link your delivery or ride-sharing platform to enable weather protection and start earning surge payouts.
+                    </p>
+</div>
+<button class="vibrant-gradient text-on-primary-container font-bold py-4 px-8 rounded-xl shadow-lg active:scale-95 transition-transform duration-150 w-full max-w-xs flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add_link</span>
+                    Connect Platform
+                </button>
+</div>
+</section>
+<!-- Stats Placeholder (Blurred) -->
+<section class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container rounded-xl p-4 border border-outline-variant/10 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Covered Hours</span>
+<span class="material-symbols-outlined text-secondary text-sm">schedule</span>
+</div>
+<div class="blur-stats">
+<p class="text-2xl font-bold text-on-surface">124.5</p>
+<p class="text-xs text-secondary-dim">+12.3 this week</p>
+</div>
+<!-- Locked Overlay -->
+<div class="absolute inset-0 bg-surface/40 flex items-center justify-center backdrop-blur-[2px]">
+<span class="material-symbols-outlined text-on-surface-variant/50">lock</span>
+</div>
+</div>
+<div class="bg-surface-container rounded-xl p-4 border border-outline-variant/10 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Earned</span>
+<span class="material-symbols-outlined text-secondary text-sm">payments</span>
+</div>
+<div class="blur-stats">
+<p class="text-2xl font-bold text-on-surface">$412.00</p>
+<p class="text-xs text-secondary-dim">Pending approval</p>
+</div>
+<!-- Locked Overlay -->
+<div class="absolute inset-0 bg-surface/40 flex items-center justify-center backdrop-blur-[2px]">
+<span class="material-symbols-outlined text-on-surface-variant/50">lock</span>
+</div>
+</div>
+</section>
+<!-- Secondary Information / Education -->
+<section class="space-y-4">
+<h3 class="font-headline text-lg font-bold text-on-surface">Why connect?</h3>
+<div class="space-y-3">
+<div class="flex gap-4 p-4 rounded-xl bg-tertiary-container/30 border border-tertiary-fixed-dim">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-tertiary-container">cloud_sync</span>
+</div>
+<div>
+<h4 class="font-bold text-sm text-on-tertiary-container">Real-time Weather Sync</h4>
+<p class="text-xs text-on-tertiary-fixed-variant mt-1">We track local weather data against your active gig shifts automatically.</p>
+</div>
+</div>
+<div class="flex gap-4 p-4 rounded-xl bg-secondary-container/20 border border-secondary-fixed-dim/30">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container">bolt</span>
+</div>
+<div>
+<h4 class="font-bold text-sm text-on-secondary-container">Instant Surge Payouts</h4>
+<p class="text-xs text-on-secondary-fixed-variant mt-1">Get paid directly when rain or extreme heat hits during your scheduled hours.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Illustrative Banner -->
+<div class="relative w-full h-40 rounded-xl overflow-hidden mt-2">
+<img class="w-full h-full object-cover" data-alt="A dynamic shot of a modern motorcycle delivery rider navigating through a vibrant city street. The scene is full of energy with warm sunlight reflecting off the bike's chrome and the rider's yellow gear. The aesthetic is high-contrast and professional, with a color palette dominated by sunny yellows and deep shadows, emphasizing the active and profitable lifestyle QuickShield enables." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeAZEV5iNcqdgURpX8UycY_7FKRHYpprbPEPWqg9VEs-nsa_Dkq24wOkCYzjor7-05Gl168Z5p4nleVmTTfrNwRA4-p4wVWo_Bh1eJWuBKZfm96KBiir6GHeWEL2qpkIufM8-4rh62sDzoSrSYpwQhYPNNe0HhciEimAuLuoEUcXQsCMcqHgsYSyXU2Lmqp5OrqCpBYJYgs8731e_vkDhlQFCxfn56w2guRXqdfzA_jCgfL8AY3t2eOynZuUBKg1tM9SrdFXEcqWuM">
+<div class="absolute inset-0 bg-gradient-to-r from-on-surface/60 to-transparent flex items-end p-4">
+<p class="text-white font-bold text-sm italic">Join 50k+ riders protected today.</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface-container border-t border-outline-variant/30 shadow-lg rounded-t-xl">
+<!-- Dashboard (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1.5 transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label text-label-sm font-medium">Dashboard</span>
+</a>
+<!-- Insurance -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container/50 transition-colors px-4 py-1.5 rounded-xl active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label text-label-sm font-medium">Insurance</span>
+</a>
+<!-- Payouts -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container/50 transition-colors px-4 py-1.5 rounded-xl active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label text-label-sm font-medium">Payouts</span>
+</a>
+<!-- Flags -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container/50 transition-colors px-4 py-1.5 rounded-xl active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">flag</span>
+<span class="font-label text-label-sm font-medium">Flags</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for the connect button
+        const connectBtn = document.querySelector('button.vibrant-gradient');
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => {
+                // Mock ripple or navigation feedback
+                console.log('Navigating to platform connection flow...');
+            });
+        }
+
+        // Add subtle parallax to the background shader on scroll
+        window.addEventListener('scroll', () => {
+            const shader = document.querySelector('webgl-shader');
+            if (shader) {
+                const scrolled = window.pageYOffset;
+                shader.style.transform = `translateY(${scrolled * 0.1}px)`;
+            }
+        });
+    </script>
+
+
+</body></html>

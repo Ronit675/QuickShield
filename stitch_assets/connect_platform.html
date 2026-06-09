@@ -1,129 +1,232 @@
 <!DOCTYPE html><html class="light" lang="en" style=""><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Connect Platform</title>
+<title>Connect Platform | Onboarding</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Domine:wght@700;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-secondary-fixed-variant": "#605e00", "on-primary-container": "#5c5000", "secondary-fixed": "#ece942", "on-error-container": "#520c00", "surface-container": "#fcf983", "outline-variant": "#c0bd5f", "inverse-primary": "#ffdf00", "on-tertiary-container": "#57622c", "primary-container": "#ffdf00", "surface-bright": "#fffbff", "primary-dim": "#665800", "on-tertiary-fixed-variant": "#616d35", "inverse-on-surface": "#a3a146", "on-surface": "#3b3a00", "secondary-container": "#ece942", "primary-fixed-dim": "#efd100", "error-dim": "#b92902", "on-surface-variant": "#696710", "surface-container-high": "#f7f376", "secondary-dim": "#5c5b00", "tertiary-fixed": "#effeb7", surface: "#fffbff", background: "#fffbff", "surface-container-highest": "#f1ee68", secondary: "#696700", "primary-fixed": "#ffdf00", "secondary-fixed-dim": "#ddda33", "surface-container-low": "#fffccb", "inverse-surface": "#0f0f00", "surface-container-lowest": "#ffffff", outline: "#86842c", "tertiary-container": "#effeb7", "error-container": "#f95630", "on-secondary-fixed": "#424100", tertiary: "#5e6a32", "on-secondary-container": "#565400", "tertiary-dim": "#525d27", error: "#be2d06", "on-primary-fixed-variant": "#675900", "surface-dim": "#ebe85b", primary: "#736400", "on-tertiary-fixed": "#45501b", "surface-variant": "#f1ee68", "on-primary": "#ffffff", "on-secondary": "#ffffff", "on-error": "#ffffff", "on-background": "#3b3a00", "tertiary-fixed-dim": "#e1efaa", "on-tertiary": "#ffffff", "on-primary-fixed": "#473d00", "surface-tint": "#736400"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {headline: ["Domine"], display: ["Domine"], body: ["Inter"], label: ["Inter"]}, fontSize: {}}}};</script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#ddda33",
+                        "inverse-surface": "#0f0f00",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#5c5000",
+                        "secondary-dim": "#5c5b00",
+                        "primary-container": "#ffdf00",
+                        "on-surface-variant": "#696710",
+                        "outline": "#86842c",
+                        "on-tertiary-container": "#57622c",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#f1ee68",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#ebe85b",
+                        "on-surface": "#3b3a00",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#616d35",
+                        "background": "#fffbff",
+                        "secondary-fixed": "#ece942",
+                        "on-secondary-fixed-variant": "#605e00",
+                        "surface-container-high": "#f7f376",
+                        "on-error-container": "#520c00",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#675900",
+                        "inverse-on-surface": "#a3a146",
+                        "on-secondary-container": "#565400",
+                        "outline-variant": "#c0bd5f",
+                        "on-secondary-fixed": "#424100",
+                        "secondary": "#696700",
+                        "primary-dim": "#665800",
+                        "primary-fixed": "#ffdf00",
+                        "error-dim": "#b92902",
+                        "surface-container-low": "#fffccb",
+                        "error-container": "#f95630",
+                        "surface-bright": "#fffbff",
+                        "tertiary": "#5e6a32",
+                        "surface-container-highest": "#f1ee68",
+                        "on-primary-fixed": "#473d00",
+                        "inverse-primary": "#ffdf00",
+                        "tertiary-dim": "#525d27",
+                        "surface-container": "#fcf983",
+                        "tertiary-container": "#effeb7",
+                        "on-background": "#3b3a00",
+                        "surface-tint": "#736400",
+                        "secondary-container": "#ece942",
+                        "on-tertiary-fixed": "#45501b",
+                        "primary": "#736400",
+                        "tertiary-fixed-dim": "#e1efaa",
+                        "primary-fixed-dim": "#efd100",
+                        "tertiary-fixed": "#effeb7",
+                        "surface": "#fffbff",
+                        "error": "#be2d06"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Domine", "serif"],
+                        "display": ["Domine", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
 <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Domine', serif; }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #fffbff;
-        }
-        h1, h2, h3 {
-            font-family: 'Domine', serif;
+        .active-nav-item .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1;
         }
     </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
-  </head>
-<body class="bg-background text-on-surface min-h-screen flex flex-col">
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
 <!-- TopAppBar -->
-<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline sticky top-0 z-40">
-<div class="flex items-center px-4 h-16 w-full max-w-7xl mx-auto">
-<button class="mr-4 p-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95 duration-100">
-<span class="material-symbols-outlined text-primary dark:text-primary-fixed">arrow_back</span>
-</button>
-<h1 class="font-headline text-xl font-bold text-primary dark:text-primary-fixed">Connect Platform</h1>
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline docked full-width top-0 sticky z-50"><div class="max-w-xl mx-auto px-4 py-4 flex flex-col gap-4">
+    <div class="flex items-center">
+        <button class="p-2 -ml-2 rounded-full hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-on-surface">arrow_back</span>
+        </button>
+    </div>
+    <div class="space-y-2">
+        <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+            <div class="h-full bg-primary w-1/2 rounded-full"></div>
+        </div>
+        <p class="font-headline text-sm font-medium text-on-surface-variant">Step 1 of 2</p>
+    </div>
+</div></header>
+<main class="max-w-xl mx-auto px-4 py-8">
+<!-- Hero/Intro Section -->
+<section class="mb-10 text-center">
+<div class="relative w-full h-48 mb-6 rounded-xl overflow-hidden shadow-sm">
+<img alt="Connecting services" class="w-full h-full object-cover" data-alt="A vibrant, high-energy digital illustration showcasing interconnected technological hubs and glowing data streams. The aesthetic uses a radiant gold and warm amber color palette, consistent with a professional light-mode design system. Soft, diffused lighting illuminates geometric icons representing logistics and delivery services, creating an atmosphere of reliability, growth, and seamless connectivity in a modern workspace environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4DMd36gAvivRW-REvdYFHCtobFTxwYTl7zjW2EwdTHYCoY8ejaiWv4ZoMudUby0clRDgk0Fe5EINdmOJaOjuxdfU-lWBF_kaksX-TFmp1iYZFYko6iPMP9MUErkF-vhywUlmL9LFvyUbTKsybtJTz4yyALOotMNuDF3F4RiZPizdemsN3rLPBvTSnDjCFgxE6aaXoEzZThZkybuciliMP5N4NqCpG3Zq4fc9a1_gHs6ekU41WPCbFoLwh-FnLY7vchbcXripbECNo">
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent"></div>
 </div>
-</header>
-<main class="flex-grow w-full max-w-7xl mx-auto px-4 py-8 pb-32">
-<!-- Linked Platforms Section -->
-<section class="mb-10">
-<div class="flex items-center justify-between mb-6">
-<h2 class="text-2xl font-bold text-on-surface">Linked Platforms</h2>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bg-surface-container-lowest border border-primary rounded-xl p-5 flex items-center justify-between shadow-md ring-1 ring-primary/20">
+<h2 class="font-headline text-3xl font-black text-on-surface mb-3">Welcome to Connect</h2>
+<p class="text-on-surface-variant text-lg leading-relaxed px-4">
+                To start your insurance protection and track your payouts, please link your primary work platforms below.
+            </p>
+</section>
+<!-- Platform Grid (Bento Style) -->
+<section class="grid grid-cols-1 gap-4">
+<!-- Swiggy -->
+<div class="bg-surface-container-low border border-outline-variant p-4 rounded-xl flex items-center justify-between hover:bg-surface-container transition-all group shadow-sm active:scale-[0.98]">
 <div class="flex items-center gap-4">
-<div class="w-14 h-14 rounded-lg bg-surface-container-high flex items-center justify-center overflow-hidden">
-<img alt="Swiggy Logo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN0naqqhRAKCEWNqUz5tNbNreyqiLryM_pIV2bdTXRrGvJwsBEdm0sVqg3n2u-wX2NynrfQmGD0ACVt2YogbWfnQ5S2iYyqdKMy-3HWz-G485K97WbgM6JtRDa0e_YRt_7tFHdW1h2FsinGEQgLUKm2Trkl3He1MCROibWqLWnRZA1BBWozyhafkn-OaIsQqvCbTLDpOM6ZV2su7tkKNZq4khA2NRCwAiniYQGhmEptuouTqJF7cCMy007X0SnB26cLGwhyNA-VEwc">
+<div class="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-inner overflow-hidden">
+<img alt="Swiggy" class="w-full h-full object-cover" data-alt="A clean, isolated logo-style shot of a vibrant orange delivery icon on a white background. The lighting is crisp and professional, fitting a high-end UI design. The image captures the energetic and fast-paced essence of modern food delivery services using a saturated color palette that complements the gold tones of the design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNwN3ImKe0ZlS7L3Jkj36b8psJnPJ7YZLkuMIo_aps4BSBoz1IKIhj6RSXPHXdHjkhBEET6BbZ_qTuWD3NsRrFrjmEhmdg1Mj5Kq0UnFNZbAQMLUqcZ7qZOgKOPTl7MHjnzZJekU2pjDaCTobgZd_1mXUQ74aKhiOURhg2L6bNIINem7d5e2SOodQoKMz16rD2MlDp_dkhOUi1pQQ_ZSCkdhw3Aw-uLhJKmzgcn9sGsgtIexVZ9L68_y4FWmlp14KQ9-DRfJRbnrrs">
 </div>
 <div>
-<h3 class="text-lg font-bold">Swiggy</h3>
-<p class="text-sm text-on-surface-variant flex items-center gap-1">
-<span class="w-2 h-2 bg-tertiary rounded-full"></span>
-                Current Primary Platform
-            </p>
+<h3 class="font-bold text-lg text-on-surface">Swiggy</h3>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Food &amp; Instamart</p>
 </div>
 </div>
-<div class="flex flex-col items-end">
-<span class="bg-tertiary-container text-on-tertiary-container text-xs font-bold px-3 py-1 rounded-full border border-tertiary/20">ACTIVE</span>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold shadow-md hover:bg-primary-dim transition-colors flex items-center gap-2">
+                    Connect
+                </button>
 </div>
-</div></div>
-</section>
-<!-- Available Platforms Section -->
-<section>
-<h2 class="text-2xl font-bold text-on-surface mb-6">Available Platforms</h2>
-<!-- Bento Grid style for platforms -->
-<div class="grid grid-cols-1 gap-6"><!-- Blinkit -->
-<div class="bg-white rounded-xl border border-outline-variant hover:shadow-sm transition-all p-4 flex items-center gap-4">
-<div class="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant/30">
-<span class="material-symbols-outlined text-primary">shopping_cart</span>
+<!-- Blinkit -->
+<div class="bg-surface-container-low border border-outline-variant p-4 rounded-xl flex items-center justify-between hover:bg-surface-container transition-all group shadow-sm active:scale-[0.98]">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-inner overflow-hidden">
+<img alt="Blinkit" class="w-full h-full object-cover" data-alt="A high-quality close-up of a grocery delivery bag with bold yellow branding. The scene is shot in a bright, outdoor setting with soft sunlight, emphasizing speed and convenience. The color scheme features warm yellows and greens, aligning with the radiant vibrant design system and evoking a sense of freshness and efficiency in urban logistics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwj8SalCOunyyP-N0bExs9uWaJlf-YwEDWWvlbUdRR8iX8ZRJyzvHTl2IuX0J6sGeMuCWg_o02qppuV2LRmSvUxikh9ihMwUlc0O9TcY7KZO7hQYBBh5jFdjboDqoB9rnc_sOHIg3UxLbWDR8Vt-FiAVO3Sh8kuwgmj82JQ95hZ4LuQv885GdoBLxv9g73-cKCPsFoNMcFK5n5NO8_I0_lZjYlWv0vXu9p2I9kRaIbJHDO6rJfdsWEuaCw3UO-Q4bM3sY_XzBXQOSA">
 </div>
-<div class="flex-grow">
-<h3 class="text-lg font-bold font-headline">Blinkit</h3>
+<div>
+<h3 class="font-bold text-lg text-on-surface">Blinkit</h3>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Quick Commerce</p>
 </div>
-<button class="px-6 py-2 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-bold rounded-lg transition-all active:scale-95 flex items-center gap-2">
-<span class="material-symbols-outlined text-sm">link</span>
-        Connect
-    </button>
+</div>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold shadow-md hover:bg-primary-dim transition-colors flex items-center gap-2">
+                    Connect
+                </button>
 </div>
 <!-- Zepto -->
-<div class="bg-white rounded-xl border border-outline-variant hover:shadow-sm transition-all p-4 flex items-center gap-4">
-<div class="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant/30">
-<span class="material-symbols-outlined text-primary">electric_moped</span>
+<div class="bg-surface-container-low border border-outline-variant p-4 rounded-xl flex items-center justify-between hover:bg-surface-container transition-all group shadow-sm active:scale-[0.98]">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-inner overflow-hidden border border-outline-variant/30">
+<img alt="Zepto" class="w-full h-full object-cover" data-alt="A professional product shot of a modern delivery container in a deep purple and vibrant gold setting. The lighting is dramatic yet soft, highlighting the high-tech nature of fast grocery delivery. The image integrates perfectly into a modern app UI with its clean lines and strong brand presence, reflecting a mood of urgency and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCV1lwlL6dlTleLM77MQvAF2IC-asA4OXfhG5bihZtS6CAh1pOq2O2pj7neahPJRiIelXry2CBUz4qmqhANdhrtinqb-Y03m1mX33aGFrT-ELJeGz9CP92H4g9KdujNFdB_9WKnsNJNWyOv4zPL1gSiKp7gLvf5pJn-TriEFMsYw1AdZQF1qOxVnDR06mNPxMXmB6hFSjWi2I6xOVHfuibveLGm6tqg7EENiq05oXogpekD_rx1fG2poo6DmBrcDihzSW3QyJbORi8g">
 </div>
-<div class="flex-grow">
-<h3 class="text-lg font-bold font-headline">Zepto</h3>
-</div>
-<button class="px-6 py-2 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-bold rounded-lg transition-all active:scale-95 flex items-center gap-2">
-<span class="material-symbols-outlined text-sm">link</span>
-        Connect
-    </button>
-</div>
-<!-- Swiggy -->
-<div class="bg-surface-container-low/30 rounded-xl border border-outline-variant p-4 flex items-center gap-4 opacity-80">
-<div class="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant/30">
-<span class="material-symbols-outlined text-primary">restaurant</span>
-</div>
-<div class="flex-grow">
-<div class="flex items-center gap-2">
-<h3 class="text-lg font-bold font-headline">Swiggy</h3>
+<div>
+<h3 class="font-bold text-lg text-on-surface">Zepto</h3>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">10-Min Delivery</p>
 </div>
 </div>
-<button class="px-6 py-2 border-2 border-outline-variant text-on-surface-variant font-bold rounded-lg flex items-center gap-2 cursor-default">
-<span class="material-symbols-outlined text-sm" style="font-variation-settings: &quot;FILL&quot; 1;">check_circle</span>
-        Linked
-    </button>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold shadow-md hover:bg-primary-dim transition-colors flex items-center gap-2">
+                    Connect
+                </button>
 </div>
 <!-- Jio Mart -->
-<div class="bg-white rounded-xl border border-outline-variant hover:shadow-sm transition-all p-4 flex items-center gap-4">
-<div class="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant/30">
-<span class="material-symbols-outlined text-primary">storefront</span>
+<div class="bg-surface-container-low border border-outline-variant p-4 rounded-xl flex items-center justify-between hover:bg-surface-container transition-all group shadow-sm active:scale-[0.98]">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-inner overflow-hidden border border-outline-variant/30">
+<img alt="Jio Mart" class="w-full h-full object-cover" data-alt="A minimalist retail and commerce scene featuring a shopping cart icon set against a warm, sun-drenched storefront background. The color palette utilizes rich blues and golden accents, creating a professional and trusted retail atmosphere. The lighting is bright and inviting, characterizing the extensive reach and service quality of a major supermarket platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCv_Bu5OHa03rVwOJMGbeWyZ_ibO6FjVjC3Mr_JThZA1o5LkZW0ZsOu5qg6nKxkkw7MF_E8Y7BTXR_PMo8RllHfe9cEWnEblbKOKfDIRlv_G4iTLnVzfk2rwVma-GpXrFZEblAxEVgAOHKi4JaFkTZiNxZByMXdT4IjQA0TsaEx8ZhUziCZLy0V9qKzkrL6Zn9tWBz1glnM2anhbnmP07KJ56fUtZ5a3VQWROMCxC1VK4NtjknXcFAhPB0ixIS4M5mcRmiEG2z5dpqv">
 </div>
-<div class="flex-grow">
-<h3 class="text-lg font-bold font-headline">Jio Mart</h3>
+<div>
+<h3 class="font-bold text-lg text-on-surface">Jio Mart</h3>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider">Groceries &amp; Fashion</p>
 </div>
-<button class="px-6 py-2 bg-primary-container hover:bg-primary-fixed text-on-primary-container font-bold rounded-lg transition-all active:scale-95 flex items-center gap-2">
-<span class="material-symbols-outlined text-sm">link</span>
-        Connect
-    </button>
-</div></div>
+</div>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-bold shadow-md hover:bg-primary-dim transition-colors flex items-center gap-2">
+                    Connect
+                </button>
+</div>
 </section>
-<!-- Information Card (Bento Style) -->
+<!-- Informational Card -->
+<section class="mt-12 bg-tertiary-container/30 border border-tertiary/20 rounded-2xl p-6 flex gap-4 items-start">
+<span class="material-symbols-outlined text-tertiary text-3xl">verified_user</span>
+<div>
+<h4 class="font-bold text-on-tertiary-container mb-1">Secure Connection</h4>
+<p class="text-sm text-on-tertiary-fixed-variant leading-relaxed">
+                    We use bank-grade encryption to sync your earnings. We never see your password and your data is always protected.
+                </p>
+</div>
+</section>
 </main>
 <!-- BottomNavBar -->
+
+<script>
+        // Micro-interaction: Ripple effect on buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                let ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                this.appendChild(ripple);
+                let x = e.clientX - e.target.offsetLeft;
+                let y = e.clientY - e.target.offsetTop;
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+    </script>
+<style>
+        .ripple {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+
+
 </body></html>
