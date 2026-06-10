@@ -1,0 +1,187 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"error-dim": "#b92902", "surface-bright": "#fffbff", "surface-container-low": "#fffccb", "inverse-surface": "#0f0f00", "surface-container-highest": "#f1ee68", "inverse-on-surface": "#a3a146", "on-tertiary-container": "#57622c", "surface-tint": "#736400", "error-container": "#f95630", "on-secondary-fixed-variant": "#605e00", "on-primary-fixed": "#473d00", "on-secondary-container": "#565400", "tertiary-fixed": "#effeb7", "on-error": "#ffffff", "surface-dim": "#ebe85b", surface: "#fffbff", "on-error-container": "#520c00", "surface-container-lowest": "#ffffff", "on-surface-variant": "#696710", "on-secondary-fixed": "#424100", background: "#fffbff", "tertiary-container": "#effeb7", "secondary-dim": "#5c5b00", "surface-variant": "#f1ee68", "on-primary-container": "#5c5000", "secondary-fixed": "#ece942", "primary-fixed": "#ffdf00", secondary: "#696700", "on-tertiary-fixed-variant": "#616d35", "surface-container": "#fcf983", "secondary-fixed-dim": "#ddda33", "on-surface": "#3b3a00", "tertiary-dim": "#525d27", tertiary: "#5e6a32", "on-primary-fixed-variant": "#675900", "primary-container": "#ffdf00", "on-background": "#3b3a00", "primary-dim": "#665800", "surface-container-high": "#f7f376", "outline-variant": "#c0bd5f", "on-tertiary": "#ffffff", outline: "#86842c", "secondary-container": "#ece942", "inverse-primary": "#ffdf00", "on-secondary": "#ffffff", "on-primary": "#ffffff", "on-tertiary-fixed": "#45501b", "tertiary-fixed-dim": "#e1efaa", "primary-fixed-dim": "#efd100", error: "#be2d06", primary: "#736400"}, fontFamily: {headline: ["Domine"], display: ["Domine"], body: ["Inter"], label: ["Inter"]}, fontSize: {}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fffbff;
+        }
+        h1, h2, h3 {
+            font-family: 'Domine', serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background group/design-root overflow-x-hidden max-w-md mx-auto shadow-xl">
+<!-- Header Section -->
+<div class="flex items-center bg-white p-4 justify-between border-b border-surface-container">
+<h2 class="text-on-surface text-2xl font-bold leading-tight tracking-tight flex-1 font-headline">Insurance</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex items-center justify-center rounded-full h-10 w-10 hover:bg-surface-container transition-colors">
+<div class="text-on-surface" data-icon="notifications" data-size="24px">
+</div>
+</button>
+</div>
+</div>
+<!-- Active Protection Section -->
+<div class="px-4 py-6"><div class="mb-6 bg-error-container p-6 rounded-xl shadow-lg border border-error-dim/20 relative overflow-hidden"><div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div><div class="relative z-10 flex flex-col gap-4"><div class="flex justify-between items-center"><div class="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Red Flag Active</div><span class="material-symbols-outlined text-white">report</span></div><div class="space-y-1"><h3 class="text-white text-2xl font-bold font-headline">Account Restricted</h3><p class="text-white/90 text-sm leading-relaxed">Your insurance benefits and claims are currently suspended due to active flags on your account.</p></div><button class="w-full bg-white text-error font-bold py-3 rounded-lg shadow-sm active:scale-95 transition-all">Resolve Now</button></div></div><h3 class="text-on-surface text-lg font-bold mb-4 font-headline">Active Protection</h3>
+<div class="mb-6 flex flex-col items-stretch justify-start rounded-xl shadow-md bg-surface-container-low p-6 gap-6 border border-outline-variant/30">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-primary font-bold text-xs uppercase tracking-widest">Rain Disruption</p>
+<h4 class="text-on-surface text-2xl font-bold font-headline">Timer Card</h4>
+</div>
+<div class="bg-on-secondary-container/20 text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+      Paused
+    </div>
+</div>
+<div class="space-y-2">
+<h2 class="text-on-surface text-3xl font-bold font-headline">Paused</h2>
+<p class="text-on-surface-variant/80 text-sm leading-relaxed">Claims timer is paused until Tomorrow (08/06). Tap I'm Back on Home after returning.</p>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-on-secondary-container/10 p-4 rounded-xl border border-outline-variant/20">
+<p class="text-on-surface-variant/60 text-[10px] uppercase font-bold tracking-tight mb-1">Working slot</p>
+<p class="text-on-surface font-bold text-base">9:00 AM - 9:00 PM</p>
+</div>
+<div class="bg-on-secondary-container/10 p-4 rounded-xl border border-outline-variant/20">
+<p class="text-on-surface-variant/60 text-[10px] uppercase font-bold tracking-tight mb-1">Claim</p>
+<p class="text-on-surface font-bold text-base">Paused</p>
+</div>
+<div class="bg-on-secondary-container/10 p-4 rounded-xl border border-outline-variant/20 col-span-2">
+<p class="text-on-surface-variant/60 text-[10px] uppercase font-bold tracking-tight mb-1">Rain rate</p>
+<p class="text-on-surface font-bold text-base">Unavailable</p>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex gap-3">
+<button class="flex-1 bg-primary-container text-on-primary-container font-bold py-3 rounded-lg shadow-sm active:scale-95 transition-all">Raise Query</button>
+
+</div>
+<p class="text-on-surface-variant/60 text-xs italic leading-tight">Timer paused until Tomorrow (08/06). Claims calculation will resume once you tap I'm Back within the 25 km working area.</p>
+</div>
+</div><div class="mb-6"><button class="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"><span class="material-symbols-outlined">flag</span>View &amp; Resolve Flags</button></div><div class="mb-6 flex flex-col items-stretch justify-start rounded-xl shadow-lg bg-primary-container p-6 gap-6 opacity-50"><div class="flex justify-between items-start">
+<div class="space-y-1">
+<h4 class="text-on-primary-container text-2xl font-bold font-headline">Rain Shield Active</h4>
+</div>
+<div class="bg-surface-container-highest text-on-surface px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+        Active
+    </div>
+</div>
+<div class="grid grid-cols-3 divide-x divide-on-primary-container/20 text-center py-2">
+<div class="px-2">
+<p class="text-on-primary-container/60 text-[10px] uppercase font-bold tracking-tight mb-1">Remaining</p>
+<p class="text-on-primary-container font-bold text-sm">7 Days</p>
+</div>
+<div class="px-2">
+<p class="text-on-primary-container/60 text-[10px] uppercase font-bold tracking-tight mb-1">Weekly</p>
+<p class="text-on-primary-container font-bold text-sm">₹76.14</p>
+</div>
+<div class="px-2">
+<p class="text-on-primary-container/60 text-[10px] uppercase font-bold tracking-tight mb-1">Paid Out</p>
+<p class="text-on-primary-container font-bold text-sm">₹0</p>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center py-6 border-y border-on-primary-container/10">
+<div class="text-on-primary-container text-5xl font-bold font-headline">₹1,356</div><p class="text-on-primary-container/80 text-xs font-bold mt-1">(100% of Avg. Daily Income)</p>
+<p class="text-on-primary-container/60 text-sm font-semibold uppercase tracking-widest mt-1">Per Day Coverage</p>
+</div>
+<div class="pt-2">
+<button class="w-full flex items-center justify-center gap-2 rounded-lg h-11 border border-on-primary-container/30 text-on-primary-container/80 text-sm font-bold transition-all hover:bg-on-primary-container/5 active:scale-95">
+<span class="material-symbols-outlined text-lg">cancel</span>
+        Remove current subscription
+    </button>
+</div></div></div>
+<!-- Add New Shield Banner -->
+<div class="px-4 pb-6">
+<div class="bg-secondary-container rounded-xl p-6 flex flex-col gap-4 relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-primary-fixed-dim rounded-full blur-2xl opacity-50"></div>
+<div class="relative z-10">
+<h3 class="text-on-secondary-container text-xl font-bold font-headline">Protect your next ride</h3>
+<p class="text-on-secondary-container/80 text-sm mt-1">Instant activation for unplanned commutes.</p>
+</div>
+<div class="relative z-10 flex items-center justify-between py-3 border-t border-on-secondary-container/10 mt-2">
+<div class="flex flex-col pr-4">
+<p class="text-on-secondary-container font-bold text-sm">Auto-renew premium</p>
+<p class="text-on-secondary-container/70 text-xs">Automatically renew this weekly premium at cycle end.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value="">
+<div class="w-11 h-6 bg-on-secondary-container/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div><div class="px-4 pb-24 opacity-50">
+<h3 class="text-on-surface text-lg font-bold mb-4 font-headline">Hourly Credit History</h3>
+<div class="flex flex-col items-stretch justify-start rounded-xl shadow-md bg-surface-container-low border border-outline-variant/30 overflow-hidden">
+<div class="flex flex-col">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-white/30">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-sm font-body">11:00 AM - 12:00 PM</span>
+<span class="text-on-surface-variant/60 text-[10px] font-bold uppercase tracking-tight">Rain: 8.5 mm/hr</span>
+</div>
+<div class="text-primary font-bold text-base font-body">+₹135.50</div>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-white/30">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-sm font-body">12:00 PM - 01:00 PM</span>
+<span class="text-on-surface-variant/60 text-[10px] font-bold uppercase tracking-tight">Rain: 6.2 mm/hr</span>
+</div>
+<div class="text-primary font-bold text-base font-body">+₹110.00</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/30">
+<div class="flex flex-col">
+<span class="text-on-surface font-bold text-sm font-body">01:00 PM - 01:45 PM</span>
+<span class="text-on-surface-variant/60 text-[10px] font-bold uppercase tracking-tight">Rain: 4.0 mm/hr</span>
+</div>
+<div class="text-primary font-bold text-base font-body">+₹0.00</div>
+</div>
+</div>
+</div><div class="mb-6"><button class="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"><span class="material-symbols-outlined">flag</span>View &amp; Resolve Flags</button></div>
+</div>
+<!-- Available Shields Section -->
+<div class="px-4 pb-24">
+<div class="flex flex-col gap-3">
+<!-- Shield Card 1 -->
+<!-- Shield Card 2 -->
+<!-- Shield Card 3 -->
+</div>
+</div>
+<!-- Shared Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto flex justify-around items-center px-4 py-3 bg-surface border-t border-outline-variant/20 z-50 rounded-t-xl shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label text-xs font-medium">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center w-20 bg-primary-container text-on-primary-container rounded-xl px-3 py-1.5 active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label text-xs font-medium">Insurance</span>
+</a>
+<a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label text-xs font-medium">Payouts</span>
+</a>
+<a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#"><div class="relative"><span class="material-symbols-outlined">flag</span><div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface"></div></div><span class="font-label text-xs font-medium">Flags</span></a>
+</nav>
+</div>
+
+
+</body></html>

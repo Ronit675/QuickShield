@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,6 +11,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+const formatClockDuration = (ms: number) => {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+};
+
 
 import { useLanguage } from '../directory/Languagecontext';
 import type { LocationIntegrityState, LocationIntegrityReason } from '../hooks/useLocationIntegrityMonitor';
@@ -48,6 +60,8 @@ const formatReason = (reason: LocationIntegrityReason, t: (path: string) => stri
       return { text: t('flags.invigilatingLocationFluctuation'), icon: 'eye' as const };
     case 'account_suspended_location_pattern':
       return { text: t('flags.accountSuspendedLocationPattern'), icon: 'ban' as const };
+    case 'account_suspended_zone_mismatch':
+      return { text: t('flags.accountSuspendedZoneMismatch'), icon: 'ban' as const };
     case 'permission_denied':
       return { text: t('flags.permissionDenied'), icon: 'lock-closed' as const };
     case 'gps_unavailable':
@@ -95,6 +109,47 @@ const formatTimeAgo = (
 
 export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: FlagsScreenProps) {
   const { language, t } = useLanguage();
+
+  const [currentClockMs, setCurrentClockMs] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentClockMs(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const holdUntilMs = Math.max(
+    locationIntegrity.suspiciousHoldUntilMs || 0,
+    locationIntegrity.invigilatingHoldUntilMs || 0,
+    locationIntegrity.accountSuspendedUntilMs || 0,
+  );
+
+  const isBlocked = holdUntilMs > currentClockMs;
+
+  const remainingHoldMs = Math.max(0, holdUntilMs - currentClockMs);
+
+  const holdStartMs = Math.max(
+    locationIntegrity.lastSuspiciousDetectedAt || 0,
+    locationIntegrity.lastInvigilatingDetectedAt || 0,
+    locationIntegrity.lastAccountSuspendedAt || 0,
+  );
+
+  const totalHoldDuration = holdUntilMs - holdStartMs;
+  const elapsedHoldMs = Math.max(0, currentClockMs - holdStartMs);
+  const progressPercent = totalHoldDuration > 0
+    ? Math.min(100, Math.max(0, (elapsedHoldMs / totalHoldDuration) * 100))
+    : 0;
+
+  const isSuspiciousActive = locationIntegrity.suspiciousHoldUntilMs && currentClockMs < locationIntegrity.suspiciousHoldUntilMs;
+  const isInvigilatingActive = locationIntegrity.invigilatingHoldUntilMs && currentClockMs < locationIntegrity.invigilatingHoldUntilMs;
+  const isSuspendedActive = locationIntegrity.accountSuspendedUntilMs && currentClockMs < locationIntegrity.accountSuspendedUntilMs;
+
+  let durationMinutes = 60;
+  if (isInvigilatingActive && !isSuspiciousActive && !isSuspendedActive) {
+    durationMinutes = 30;
+  }
+
   
   const isFlagged = locationIntegrity.isFlagged;
   const flagLevel = locationIntegrity.flagLevel;
@@ -212,118 +267,180 @@ export default function FlagsScreen({ bottomInset = 40, locationIntegrity }: Fla
         showsVerticalScrollIndicator={false}
       >
         {/* Monitor Header Card */}
-        <View style={styles.monitorCard}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.eyebrow}>{t('flags.eyebrow')}</Text>
-              <Text style={styles.title}>{t('flags.title')}</Text>
-            </View>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: badgeStyles.bg,
-                  borderColor: badgeStyles.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name={isFlagged ? 'warning' : 'checkmark-circle'}
-                size={14}
-                color={badgeStyles.text}
-              />
-              <Text style={[styles.badgeText, { color: badgeStyles.text }]}>
-                {isRedFlag
-                  ? t('flags.redFlag')
-                  : isYellowFlag
-                  ? t('flags.yellowFlag')
-                  : isGreenFlag
-                  ? t('flags.recovered')
-                  : t('flags.normal')}
-              </Text>
-            </View>
-          </View>
+        <View style={[styles.monitorCard, isBlocked && styles.monitorCardBlocked]}>
+          {isBlocked ? (
+            <>
+              {/* Breach Banner */}
+              <View style={styles.breachBanner}>
+                <Ionicons name="alert-circle" size={14} color="#FFFFFF" />
+                <Text style={styles.breachBannerText}>
+                  {t('flags.integrityBreach').toUpperCase()}
+                </Text>
+              </View>
 
-          <View style={styles.countContainer}>
-            <Text style={[styles.countValue, { color: getStatusColor() }]}>
-              {locationIntegrity.redFlagCount}
-            </Text>
-            <Text style={styles.countLabel}>
-              {t('flags.breachesDetected', { count: String(locationIntegrity.redFlagCount) })}
-            </Text>
-          </View>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.eyebrow}>{t('flags.eyebrow')}</Text>
+                  <Text style={styles.title}>{t('flags.title')}</Text>
+                </View>
+                <View style={[styles.badge, styles.blockedBadge]}>
+                  <Ionicons name="ban" size={14} color="#EF4444" />
+                  <Text style={[styles.badgeText, styles.blockedBadgeText]}>
+                    {t('flags.accountBlocked')}
+                  </Text>
+                </View>
+              </View>
 
-          {/* Recovery Progress (if Red or Green Flag) */}
-          {(isRedFlag || isGreenFlag) && (
-            <View style={styles.recoverySection}>
-              <Text style={styles.recoveryTitle}>{t('flags.recoveryProgress')}</Text>
-              <Text style={styles.recoveryText}>
-                {t('flags.recoveryChecks', {
-                  completed: String(locationIntegrity.consecutiveInnerRadiusPoints),
-                })}
-              </Text>
-              <View style={styles.progressBar}>
+              <View style={styles.blockedCountdownContainer}>
+                <Text style={styles.blockedCountdownText}>
+                  {formatClockDuration(remainingHoldMs)}
+                </Text>
+                <Text style={styles.blockedCountdownDesc}>
+                  {t('flags.suspendedDescription', { minutes: String(durationMinutes) })}
+                </Text>
+              </View>
+
+              {/* Recovery Progress */}
+              <View style={styles.recoverySection}>
+                <Text style={styles.recoveryTitle}>{t('flags.recoveryProgress')}</Text>
+                <Text style={styles.recoveryText}>Suspended</Text>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${progressPercent}%`,
+                        backgroundColor: '#EF4444',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {/* Last Checked Footer */}
+              <View style={styles.cardFooter}>
+                <Text style={styles.lastCheckedTextBlocked}>
+                  {t('flags.lastChecked', {
+                    time: formatDetectionTime(locationIntegrity.lastCheckedAt ?? Date.now(), locale),
+                  })}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.eyebrow}>{t('flags.eyebrow')}</Text>
+                  <Text style={styles.title}>{t('flags.title')}</Text>
+                </View>
                 <View
                   style={[
-                    styles.progressFill,
+                    styles.badge,
                     {
-                      width: `${(locationIntegrity.consecutiveInnerRadiusPoints / 5) * 100}%`,
-                      backgroundColor: getStatusColor(),
+                      backgroundColor: badgeStyles.bg,
+                      borderColor: badgeStyles.border,
                     },
                   ]}
-                />
-              </View>
-              <Text style={styles.checksRemaining}>
-                {checksLeft === 0
-                  ? `✓ ${t('flags.fullyRecovered')}`
-                  : t('flags.checksRemaining', { count: String(checksLeft) })}
-              </Text>
-            </View>
-          )}
-
-          {/* GPS Status Footer */}
-          <View style={styles.cardFooter}>
-            <View style={styles.gpsRow}>
-              <Ionicons name="location" size={16} color="#736400" />
-              <Text style={styles.gpsText}>{locationIntegrity.statusText}</Text>
-            </View>
-            <Text style={styles.lastCheckedText}>
-              {t('flags.lastChecked', {
-                time: formatDetectionTime(locationIntegrity.lastCheckedAt ?? Date.now(), locale),
-              })}
-            </Text>
-          </View>
-
-          {/* Suspicious Case Action query button */}
-          {hasActiveSuspiciousCase && (
-            <View style={styles.queryCard}>
-              <Text style={styles.queryTitle}>{t('flags.suspiciousCaseTitle')}</Text>
-              <Text style={styles.querySubtitle}>{t('flags.suspiciousCaseDescription')}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.queryButton,
-                  (!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery) && styles.queryButtonDisabled,
-                ]}
-                activeOpacity={0.85}
-                onPress={handleRaiseSuspiciousQuery}
-                disabled={!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery}
-              >
-                {isSubmittingSuspiciousQuery ? (
-                  <ActivityIndicator color="#08110F" size="small" />
-                ) : (
-                  <Text style={styles.queryButtonText}>
-                    {hasRaisedSuspiciousQueryForCurrentCase || hasRaisedSuspiciousQueryLocally
-                      ? t('flags.queryRaised')
-                      : t('flags.raiseQuery')}
+                >
+                  <Ionicons
+                    name={isFlagged ? 'warning' : 'checkmark-circle'}
+                    size={14}
+                    color={badgeStyles.text}
+                  />
+                  <Text style={[styles.badgeText, { color: badgeStyles.text }]}>
+                    {isRedFlag
+                      ? t('flags.redFlag')
+                      : isYellowFlag
+                      ? t('flags.yellowFlag')
+                      : isGreenFlag
+                      ? t('flags.recovered')
+                      : t('flags.normal')}
                   </Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                </View>
+              </View>
+
+              <View style={styles.countContainer}>
+                <Text style={[styles.countValue, { color: getStatusColor() }]}>
+                  {locationIntegrity.redFlagCount}
+                </Text>
+                <Text style={styles.countLabel}>
+                  {t('flags.breachesDetected', { count: String(locationIntegrity.redFlagCount) })}
+                </Text>
+              </View>
+
+              {/* Recovery Progress (if Red or Green Flag) */}
+              {(isRedFlag || isGreenFlag) && (
+                <View style={styles.recoverySection}>
+                  <Text style={styles.recoveryTitle}>{t('flags.recoveryProgress')}</Text>
+                  <Text style={styles.recoveryText}>
+                    {t('flags.recoveryChecks', {
+                      completed: String(locationIntegrity.consecutiveInnerRadiusPoints),
+                    })}
+                  </Text>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${(locationIntegrity.consecutiveInnerRadiusPoints / 5) * 100}%`,
+                          backgroundColor: getStatusColor(),
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.checksRemaining}>
+                    {checksLeft === 0
+                      ? `✓ ${t('flags.fullyRecovered')}`
+                      : t('flags.checksRemaining', { count: String(checksLeft) })}
+                  </Text>
+                </View>
+              )}
+
+              {/* GPS Status Footer */}
+              <View style={styles.cardFooter}>
+                <View style={styles.gpsRow}>
+                  <Ionicons name="location" size={16} color="#736400" />
+                  <Text style={styles.gpsText}>{locationIntegrity.statusText}</Text>
+                </View>
+                <Text style={styles.lastCheckedText}>
+                  {t('flags.lastChecked', {
+                    time: formatDetectionTime(locationIntegrity.lastCheckedAt ?? Date.now(), locale),
+                  })}
+                </Text>
+              </View>
+
+              {/* Suspicious Case Action query button */}
+              {hasActiveSuspiciousCase && (
+                <View style={styles.queryCard}>
+                  <Text style={styles.queryTitle}>{t('flags.suspiciousCaseTitle')}</Text>
+                  <Text style={styles.querySubtitle}>{t('flags.suspiciousCaseDescription')}</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.queryButton,
+                      (!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery) && styles.queryButtonDisabled,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={handleRaiseSuspiciousQuery}
+                    disabled={!canRaiseSuspiciousQuery || isSubmittingSuspiciousQuery}
+                  >
+                    {isSubmittingSuspiciousQuery ? (
+                      <ActivityIndicator color="#08110F" size="small" />
+                    ) : (
+                      <Text style={styles.queryButtonText}>
+                        {hasRaisedSuspiciousQueryForCurrentCase || hasRaisedSuspiciousQueryLocally
+                          ? t('flags.queryRaised')
+                          : t('flags.raiseQuery')}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
         </View>
 
         {/* Detection History */}
-        <View style={styles.historyContainer}>
+        <View style={[styles.historyContainer, isBlocked && { opacity: 0.5 }]}>
           <Text style={styles.historySectionTitle}>{t('flags.detectionHistory')}</Text>
 
           {sortedHistory.length > 0 ? (
@@ -698,5 +815,56 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     fontWeight: '800',
     letterSpacing: 0.8,
+  },
+  monitorCardBlocked: {
+    overflow: 'hidden',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  breachBanner: {
+    backgroundColor: '#EF4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: -20,
+    marginTop: -20,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  breachBannerText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  blockedBadge: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+  },
+  blockedBadgeText: {
+    color: '#B91C1C',
+  },
+  blockedCountdownContainer: {
+    marginBottom: 16,
+  },
+  blockedCountdownText: {
+    fontSize: 56,
+    fontWeight: '900',
+    color: '#EF4444',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace' }),
+    letterSpacing: -1,
+  },
+  blockedCountdownDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  lastCheckedTextBlocked: {
+    fontSize: 11,
+    color: '#94A3B8',
   },
 });

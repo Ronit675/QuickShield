@@ -14,6 +14,7 @@ export type LocationIntegrityReason =
   | 'suspicious_query_raised'
   | 'invigilating_location_fluctuation'
   | 'account_suspended_location_pattern'
+  | 'account_suspended_zone_mismatch'
   | 'permission_denied'
   | 'gps_unavailable'
   | 'location_error';
@@ -44,7 +45,7 @@ type UseLocationIntegrityMonitorOptions = {
   pollIntervalMs?: number;
   hydratedState?: Partial<LocationIntegrityState> | null;
   forceOutsideAreaRedAt?: number | null;
-  riderProfile?: Pick<AuthUser, 'workingShiftLabel' | 'workingTimeSlots'> | null;
+  riderProfile?: Pick<AuthUser, 'workingShiftLabel' | 'workingTimeSlots' | 'serviceZone'> | null;
 };
 
 export type LocationIntegrityFlagLevel = 'none' | 'yellow' | 'red' | 'green';
@@ -89,10 +90,22 @@ const INVIGILATING_EVENTS_MIN_FOR_HOLD = 3;
 const LOCATION_CHANGE_PATTERN_WINDOW = 4;
 const LOCATION_CHANGE_PATTERN_MIN_HITS_FOR_SUSPEND = 2;
 const ACCOUNT_SUSPEND_MS = 60 * 60 * 1000;
+
 export const WORKING_AREA_CENTER = {
   // Whitefield, Bengaluru
   latitude: 12.9698,
   longitude: 77.7499,
+};
+
+export const ZONE_CENTERS: Record<string, { latitude: number; longitude: number }> = {
+  'bengaluru-koramangala':  { latitude: 12.9352, longitude: 77.6244 },
+  'bengaluru-indiranagar':  { latitude: 12.9719, longitude: 77.6412 },
+  'bengaluru-whitefield':   { latitude: 12.9698, longitude: 77.7499 },
+  'bengaluru-btm':          { latitude: 12.9166, longitude: 77.6101 },
+  'mumbai-andheri':         { latitude: 19.1136, longitude: 72.8697 },
+  'mumbai-bandra':          { latitude: 19.0596, longitude: 72.8295 },
+  'delhi-connaught':        { latitude: 28.6304, longitude: 77.2177 },
+  'delhi-lajpat':           { latitude: 28.5677, longitude: 77.2435 },
 };
 
 const REASON_TEXT: Record<LocationIntegrityReason, string> = {
@@ -104,6 +117,7 @@ const REASON_TEXT: Record<LocationIntegrityReason, string> = {
   suspicious_query_raised: 'Suspicious case query raised for admin review',
   invigilating_location_fluctuation: 'Invigilating - location changed repeatedly during 5 checks',
   account_suspended_location_pattern: 'Account suspended - repeated changed locations matched rainfall/working-slot pattern',
+  account_suspended_zone_mismatch: 'Account suspended - location does not match onboarding zone',
   permission_denied: 'Location permission denied',
   gps_unavailable: 'GPS services are disabled',
   location_error: 'Unable to read current location',
@@ -165,19 +179,27 @@ const normalizeTimestamp = (timestamp: number, previousTimestamp: number | null)
   return previousTimestamp + 1_000;
 };
 
-export const isWithinWorkingAreaRadius = (latitude: number, longitude: number) => {
+export const isWithinWorkingAreaRadius = (
+  latitude: number,
+  longitude: number,
+  center = WORKING_AREA_CENTER,
+) => {
   const distanceFromWorkingAreaKm = calculateDistanceKm(
     { latitude, longitude },
-    WORKING_AREA_CENTER,
+    center,
   );
 
   return distanceFromWorkingAreaKm <= WORKING_AREA_RADIUS_KM;
 };
 
-const isWithinInnerRadius = (latitude: number, longitude: number) => {
+const isWithinInnerRadius = (
+  latitude: number,
+  longitude: number,
+  center = WORKING_AREA_CENTER,
+) => {
   const distanceFromWorkingAreaKm = calculateDistanceKm(
     { latitude, longitude },
-    WORKING_AREA_CENTER,
+    center,
   );
 
   return distanceFromWorkingAreaKm <= INNER_RADIUS_KM;
@@ -354,6 +376,9 @@ export const useLocationIntegrityMonitor = ({
 
     let cancelled = false;
 
+    const activeZone = riderProfile?.serviceZone ?? 'bengaluru-whitefield';
+    const activeCenter = ZONE_CENTERS[activeZone] ?? ZONE_CENTERS['bengaluru-whitefield'];
+
     const runIntegrityCheck = async () => {
       if (inFlightRef.current) {
         return;
@@ -444,6 +469,7 @@ export const useLocationIntegrityMonitor = ({
         const isOutsideWorkingArea = !isWithinWorkingAreaRadius(
           currentLocation.coords.latitude,
           currentLocation.coords.longitude,
+          activeCenter,
         );
 
         const reasons: LocationIntegrityReason[] = [];
@@ -487,6 +513,7 @@ export const useLocationIntegrityMonitor = ({
         const isLocationWithinInnerRadius = isWithinInnerRadius(
           currentLocation.coords.latitude,
           currentLocation.coords.longitude,
+          activeCenter,
         );
         const currentLocationWeather = await loadMockHeavyRainfallDetailsForLocation({
           latitude: currentLocation.coords.latitude,
@@ -527,6 +554,7 @@ export const useLocationIntegrityMonitor = ({
             let shouldMarkInvigilatingThisCheck = false;
             let shouldApplyInvigilatingHoldThisCheck = false;
             let shouldSuspendAccountThisCheck = false;
+            let shouldSuspendAccountZoneMismatch = false;
 
             if (hasSuddenChangeReason) {
               // New anomaly detected - reset to red
@@ -664,17 +692,14 @@ export const useLocationIntegrityMonitor = ({
                   const anchorWeather = redCycleAnchorWeatherRef.current;
                   const hadMovementAnomalyInCurrentRedCycle = hadTeleportationInCurrentRedCycleRef.current
                     || hadUnnaturalVelocityInCurrentRedCycleRef.current;
-                  const shouldMarkSuspicious = hadMovementAnomalyInCurrentRedCycle
-                    && Boolean(anchorWeather?.weather.isHeavyRainfall)
-                    && isWithinWorkingHoursNow
-                    && !isLocationWithinInnerRadius;
+                  const isZoneMismatch = isOutsideWorkingArea;
 
-                  if (shouldMarkSuspicious) {
+                  if (isZoneMismatch) {
+                    shouldSuspendAccountZoneMismatch = true;
                     nextFlagLevel = 'none';
                     nextRedFlagDetectedAt = null;
                     nextNormalizedAfterRedAt = null;
                     nextConsecutiveInnerRadiusPoints = 0;
-                    uniqueReasons.splice(0, uniqueReasons.length, 'suspicious_outside_working_area');
                     hadTeleportationInCurrentRedCycleRef.current = false;
                     hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
                     redCycleAnchorLocationRef.current = null;
@@ -683,19 +708,39 @@ export const useLocationIntegrityMonitor = ({
                     invigilatingMarkedInCurrentCycleRef.current = false;
                     locationChangeConditionHitsInCurrentCycleRef.current = [];
                   } else {
-                    // After the 5th check, if heavy rainfall or working-hours overlap is missing,
-                    // clear the red cycle and mark recovery even if the rider remains outside 10 km.
-                    nextFlagLevel = 'green';
-                    nextRedFlagDetectedAt = null;
-                    nextNormalizedAfterRedAt = null;
-                    nextConsecutiveInnerRadiusPoints = DURATION_CHECK_GPS_POINTS;
-                    hadTeleportationInCurrentRedCycleRef.current = false;
-                    hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
-                    redCycleAnchorLocationRef.current = null;
-                    redCycleAnchorWeatherRef.current = null;
-                    locationChangeCountInCurrentCycleRef.current = 0;
-                    invigilatingMarkedInCurrentCycleRef.current = false;
-                    locationChangeConditionHitsInCurrentCycleRef.current = [];
+                    const shouldMarkSuspicious = hadMovementAnomalyInCurrentRedCycle
+                      && Boolean(anchorWeather?.weather.isHeavyRainfall)
+                      && isWithinWorkingHoursNow
+                      && !isLocationWithinInnerRadius;
+
+                    if (shouldMarkSuspicious) {
+                      nextFlagLevel = 'none';
+                      nextRedFlagDetectedAt = null;
+                      nextNormalizedAfterRedAt = null;
+                      nextConsecutiveInnerRadiusPoints = 0;
+                      uniqueReasons.splice(0, uniqueReasons.length, 'suspicious_outside_working_area');
+                      hadTeleportationInCurrentRedCycleRef.current = false;
+                      hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
+                      redCycleAnchorLocationRef.current = null;
+                      redCycleAnchorWeatherRef.current = null;
+                      locationChangeCountInCurrentCycleRef.current = 0;
+                      invigilatingMarkedInCurrentCycleRef.current = false;
+                      locationChangeConditionHitsInCurrentCycleRef.current = [];
+                    } else {
+                      // After the 5th check, if heavy rainfall or working-hours overlap is missing,
+                      // clear the red cycle and mark recovery even if the rider remains outside 10 km.
+                      nextFlagLevel = 'green';
+                      nextRedFlagDetectedAt = null;
+                      nextNormalizedAfterRedAt = null;
+                      nextConsecutiveInnerRadiusPoints = DURATION_CHECK_GPS_POINTS;
+                      hadTeleportationInCurrentRedCycleRef.current = false;
+                      hadUnnaturalVelocityInCurrentRedCycleRef.current = false;
+                      redCycleAnchorLocationRef.current = null;
+                      redCycleAnchorWeatherRef.current = null;
+                      locationChangeCountInCurrentCycleRef.current = 0;
+                      invigilatingMarkedInCurrentCycleRef.current = false;
+                      locationChangeConditionHitsInCurrentCycleRef.current = [];
+                    }
                   }
                 } else {
                   nextFlagLevel = 'red';
@@ -737,6 +782,9 @@ export const useLocationIntegrityMonitor = ({
             if (shouldSuspendAccountThisCheck) {
               newAnomalyReasons.push('account_suspended_location_pattern');
             }
+            if (shouldSuspendAccountZoneMismatch) {
+              newAnomalyReasons.push('account_suspended_zone_mismatch');
+            }
             newAnomalyReasons.forEach((reason) => {
               newHistory.push({ reason, detectedAt: now });
             });
@@ -759,6 +807,8 @@ export const useLocationIntegrityMonitor = ({
                   ? 'Invigilating - frequent location fluctuations detected.'
                 : shouldSuspendAccountThisCheck
                   ? 'Account suspended for 60 minutes due to repeated location-change pattern.'
+                : shouldSuspendAccountZoneMismatch
+                  ? 'Account suspended for 60 minutes due to onboarding zone mismatch.'
                 : nextFlagLevel === 'red' && current.flagLevel === 'red' && isLocationWithinInnerRadius && nextNormalizedAfterRedAt !== null
                   ? 'Inside 10 km zone. Monitoring movement stability for 2 minutes...'
                   : nextFlagLevel === 'red' && isOutsideWorkingArea
@@ -785,10 +835,10 @@ export const useLocationIntegrityMonitor = ({
               lastInvigilatingDetectedAt: shouldMarkInvigilatingThisCheck
                 ? now
                 : current.lastInvigilatingDetectedAt,
-              accountSuspendedUntilMs: shouldSuspendAccountThisCheck
+              accountSuspendedUntilMs: (shouldSuspendAccountThisCheck || shouldSuspendAccountZoneMismatch)
                 ? now + ACCOUNT_SUSPEND_MS
                 : current.accountSuspendedUntilMs,
-              lastAccountSuspendedAt: shouldSuspendAccountThisCheck
+              lastAccountSuspendedAt: (shouldSuspendAccountThisCheck || shouldSuspendAccountZoneMismatch)
                 ? now
                 : current.lastAccountSuspendedAt,
             };
@@ -836,7 +886,7 @@ export const useLocationIntegrityMonitor = ({
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [enabled, pollIntervalMs, riderProfile?.workingShiftLabel, riderProfile?.workingTimeSlots]);
+  }, [enabled, pollIntervalMs, riderProfile?.workingShiftLabel, riderProfile?.workingTimeSlots, riderProfile?.serviceZone]);
 
   return state;
 };

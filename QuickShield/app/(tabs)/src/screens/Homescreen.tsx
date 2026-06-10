@@ -553,6 +553,7 @@ export default function HomeScreen({
     isActiveProtectionDashboard ||
     shouldShowInactiveDisruptionDesign ||
     shouldShowPausedPremiumDesign ||
+    (isClaimsFeatureDisabled && isRedFlagPause) ||
     (!isPremiumTab && policy?.status === 'active') ||
     (!isPremiumTab && user?.platformConnectionStatus !== 'verified');
   const activeProtectionLocationLabel = [user?.city, user?.serviceZone]
@@ -581,6 +582,8 @@ export default function HomeScreen({
       setOutOfTownSinceMs(null);
       setOutOfTownUntilDate(null);
       setSelectedReturnDateLabel(null);
+      onImBackRecovered?.();
+      void refreshMiniDisruptionState();
       return;
     }
 
@@ -590,8 +593,10 @@ export default function HomeScreen({
         setOutOfTownSinceMs(null);
         setOutOfTownUntilDate(null);
         setSelectedReturnDateLabel(null);
+        onImBackRecovered?.();
+        void refreshMiniDisruptionState();
       }
-    }, 60_000);
+    }, 1000);
 
     return () => {
       clearInterval(unlockInterval);
@@ -604,6 +609,8 @@ export default function HomeScreen({
     setOutOfTownSinceMs,
     setOutOfTownUntilDate,
     setSelectedReturnDateLabel,
+    onImBackRecovered,
+    refreshMiniDisruptionState,
   ]);
 
   useEffect(() => {
@@ -1097,8 +1104,298 @@ export default function HomeScreen({
         contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPolicy(); }} tintColor={isLightDashboardState ? '#736400' : '#00E5A0'} />}
       >
-        {isClaimsFeatureDisabled && !shouldShowPausedPremiumDesign && (
-          <View style={styles.imBackCard}>
+        {isClaimsFeatureDisabled && isRedFlagPause ? (
+          !isPremiumTab ? (
+            <View style={styles.restrictedContainer}>
+              <Text style={styles.activeDashboardGreeting}>Hello, Rider!</Text>
+
+              {/* Hero Restricted Card */}
+              <View style={styles.restrictedAlertCard}>
+                <View style={styles.restrictedAlertIconContainer}>
+                  <Ionicons name="warning" size={80} color="#BE2D06" />
+                </View>
+                <View style={styles.restrictedAlertHeader}>
+                  <Ionicons name="warning" size={20} color="#BE2D06" style={{ marginRight: 8 }} />
+                  <Text style={styles.restrictedAlertTitle}>Account Restricted</Text>
+                </View>
+                <View style={styles.restrictedBadge}>
+                  <Text style={styles.restrictedBadgeText}>RED FLAG ACTIVE</Text>
+                </View>
+                <Text style={styles.restrictedAlertDescription}>
+                  Integrity breach detected. Your account features are currently disabled. Please review the flags to restore access.
+                </Text>
+              </View>
+
+              {/* Bento Grid */}
+              <View style={styles.restrictedBentoGrid}>
+                {/* Disruption Timer Card */}
+                <View style={styles.restrictedTimerCard}>
+                  <Text style={styles.restrictedTimerLabel}>Disruption Timer</Text>
+                  <View style={styles.restrictedPausedBadge}>
+                    <Ionicons name="pause-circle" size={16} color="#3B3A00" style={{ marginRight: 6 }} />
+                    <Text style={styles.restrictedPausedBadgeText}>PAUSED</Text>
+                  </View>
+                </View>
+
+                {/* Re-evaluation Timer Card */}
+                <View style={styles.restrictedReevalCard}>
+                  <View style={styles.restrictedReevalContent}>
+                    <Text style={styles.restrictedReevalLabel}>RE-EVALUATION TIMER</Text>
+                    <Text style={styles.restrictedReevalValue}>
+                      {formatClockDuration(outOfTownUntilDate ? Math.max(0, outOfTownUntilDate.getTime() - miniClockMs) : 3600000)}
+                    </Text>
+                    <Text style={styles.restrictedReevalSubtext}>Time remaining until account review.</Text>
+                  </View>
+                  <Ionicons name="time-outline" size={72} color="#736400" style={styles.restrictedReevalBgIcon} />
+                </View>
+              </View>
+
+              {/* Resolve CTA */}
+              <TouchableOpacity
+                style={styles.restrictedResolveButton}
+                activeOpacity={0.88}
+                onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+              >
+                <Text style={styles.restrictedResolveButtonText}>View & Resolve Flags</Text>
+                <Ionicons name="arrow-forward" size={20} color="#473D00" />
+              </TouchableOpacity>
+
+              {/* Information List */}
+              <View style={styles.restrictedInfoList}>
+                <View style={[styles.restrictedInfoRow, styles.restrictedInfoRowBorder]}>
+                  <View style={[styles.restrictedInfoIconBox, styles.restrictedInfoIconBoxYellow]}>
+                    <Ionicons name="hammer" size={20} color="#696700" />
+                  </View>
+                  <View style={styles.restrictedInfoTextWrap}>
+                    <Text style={styles.restrictedInfoTitle}>Policy Integrity</Text>
+                    <Text style={styles.restrictedInfoSubtitle}>Violation ID: #QS-88210</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#696710" />
+                </View>
+
+                <View style={styles.restrictedInfoRow}>
+                  <View style={[styles.restrictedInfoIconBox, styles.restrictedInfoIconBoxGreen]}>
+                    <Ionicons name="headset" size={20} color="#5E6A32" />
+                  </View>
+                  <View style={styles.restrictedInfoTextWrap}>
+                    <Text style={styles.restrictedInfoTitle}>Support Appeal</Text>
+                    <Text style={styles.restrictedInfoSubtitle}>Waiting for documentation</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#696710" />
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.premiumRestrictedContainer}>
+              {/* 1. Account Restricted Banner */}
+              <View style={styles.premiumRestrictedBanner}>
+                <View style={styles.premiumRestrictedBannerRow}>
+                  <View style={styles.premiumRestrictedBadge}>
+                    <Text style={styles.premiumRestrictedBadgeText}>Red Flag Active</Text>
+                  </View>
+                  <Ionicons name="warning" size={20} color="#FFFFFF" />
+                </View>
+                <Text style={styles.premiumRestrictedBannerTitle}>Account Restricted</Text>
+                <Text style={styles.premiumRestrictedBannerDesc}>
+                  Your insurance benefits and claims are currently suspended due to active flags on your account.
+                </Text>
+                <TouchableOpacity
+                  style={styles.premiumRestrictedBannerBtn}
+                  activeOpacity={0.88}
+                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                >
+                  <Text style={styles.premiumRestrictedBannerBtnText}>Resolve Now</Text>
+                </TouchableOpacity>
+              </View>
+
+              {policy?.status === 'active' ? (
+                <>
+                  <Text style={styles.premiumRestrictedSectionTitle}>Active Protection</Text>
+
+                  {/* 2. Paused Timer Card */}
+                  <View style={styles.premiumPausedTimerCard}>
+                    <View style={styles.premiumPausedTimerHeader}>
+                      <View>
+                        <Text style={styles.premiumPausedTimerCategory}>Rain Disruption</Text>
+                        <Text style={styles.premiumPausedTimerTitle}>Timer Card</Text>
+                      </View>
+                      <View style={styles.premiumPausedBadge}>
+                        <Text style={styles.premiumPausedBadgeText}>Paused</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.premiumPausedValueWrap}>
+                      <Text style={styles.premiumPausedValue}>Paused</Text>
+                      <Text style={styles.premiumPausedDesc}>
+                        Claims timer is paused until {selectedReturnDateLabel || 'tomorrow'}. Tap I&apos;m Back on Home after returning.
+                      </Text>
+                    </View>
+
+                    <View style={styles.premiumPausedGrid}>
+                      <View style={styles.premiumPausedGridItem}>
+                        <Text style={styles.premiumPausedGridItemLabel}>Working slot</Text>
+                        <Text style={styles.premiumPausedGridItemValue}>{miniWorkingSlotLabel}</Text>
+                      </View>
+                      <View style={styles.premiumPausedGridItem}>
+                        <Text style={styles.premiumPausedGridItemLabel}>Claim</Text>
+                        <Text style={styles.premiumPausedGridItemValue}>Paused</Text>
+                      </View>
+                      <View style={[styles.premiumPausedGridItem, styles.premiumPausedGridItemFull]}>
+                        <Text style={styles.premiumPausedGridItemLabel}>Rain rate</Text>
+                        <Text style={styles.premiumPausedGridItemValue}>Unavailable</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.premiumPausedGrid}>
+                      <TouchableOpacity
+                        style={[styles.premiumRaiseQueryBtn, hasRaisedQuery && styles.premiumRaiseQueryBtnRaised]}
+                        activeOpacity={0.88}
+                        onPress={() => {
+                          void handleRaiseQuery();
+                        }}
+                        disabled={isRaisingQuery || hasRaisedQuery}
+                      >
+                        {isRaisingQuery ? (
+                          <ActivityIndicator color={hasRaisedQuery ? '#00E5A0' : '#BE2D06'} />
+                        ) : hasRaisedQuery ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="checkmark-circle" size={16} color="#00E5A0" style={{ marginRight: 4 }} />
+                            <Text style={styles.premiumRaiseQueryBtnRaisedText}>Query Raised</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.premiumRaiseQueryBtnText}>Raise Query</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.premiumPausedFooter}>
+                      <Text style={styles.premiumPausedFooterCaption}>
+                        Timer paused until {selectedReturnDateLabel || 'tomorrow'}. Claims calculation will resume once you tap I&apos;m Back within the 25 km working area.
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 3. Resolve Flags Button (Directly below active card) */}
+                  <TouchableOpacity
+                    style={styles.premiumResolveCTAButton}
+                    activeOpacity={0.88}
+                    onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  >
+                    <Ionicons name="flag" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.premiumResolveCTAButtonText}>View & Resolve Flags</Text>
+                  </TouchableOpacity>
+
+                  {/* 4. Rain Shield Active (Faded/Disabled) */}
+                  <View style={[styles.premiumRainShieldCard, { opacity: 0.5 }]}>
+                    <View style={styles.premiumRainShieldHeader}>
+                      <Text style={styles.premiumRainShieldTitle}>Rain Shield Active</Text>
+                      <View style={styles.premiumRainShieldBadge}>
+                        <Text style={styles.premiumRainShieldBadgeText}>Active</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.premiumRainShieldGrid}>
+                      <View style={styles.premiumRainShieldGridItem}>
+                        <Text style={styles.premiumRainShieldLabel}>Remaining</Text>
+                        <Text style={styles.premiumRainShieldValue}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</Text>
+                      </View>
+                      <View style={styles.premiumRainShieldDivider} />
+                      <View style={styles.premiumRainShieldGridItem}>
+                        <Text style={styles.premiumRainShieldLabel}>Weekly</Text>
+                        <Text style={styles.premiumRainShieldValue}>{formatCurrency(policy.weeklyPremium)}</Text>
+                      </View>
+                      <View style={styles.premiumRainShieldDivider} />
+                      <View style={styles.premiumRainShieldGridItem}>
+                        <Text style={styles.premiumRainShieldLabel}>Paid Out</Text>
+                        <Text style={styles.premiumRainShieldValue}>{formatCurrency(totalPaidOut)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.premiumRainShieldCoverageBox}>
+                      <Text style={styles.premiumRainShieldCoverageVal}>{formatCurrency(policy.coveragePerDay)}</Text>
+                      <Text style={styles.premiumRainShieldCoverageCaption}>(100% of Avg. Daily Income)</Text>
+                      <Text style={styles.premiumRainShieldCoverageLabel}>Per Day Coverage</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.premiumRainShieldRemoveBtn}
+                      disabled
+                      activeOpacity={1}
+                    >
+                      <Ionicons name="close-circle-outline" size={16} color="rgba(92, 80, 0, 0.6)" style={{ marginRight: 6 }} />
+                      <Text style={styles.premiumRainShieldRemoveBtnText}>Remove current subscription</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* 5. Hourly Credit History (Faded/Disabled) */}
+                  <Text style={[styles.premiumHistoryTitle, { opacity: 0.5 }]}>Hourly Credit History</Text>
+                  <View style={[styles.premiumHistoryCard, { opacity: 0.5 }]}>
+                    {claims.length === 0 ? (
+                      <View style={styles.premiumHistoryEmpty}>
+                        <Text style={styles.premiumHistoryEmptyText}>No recent activity.</Text>
+                      </View>
+                    ) : (
+                      claims.slice(0, 3).map((claim, idx) => (
+                        <View
+                          key={idx}
+                          style={[
+                            styles.premiumHistoryRow,
+                            idx === Math.min(claims.length, 3) - 1 && styles.premiumHistoryRowLast,
+                          ]}
+                        >
+                          <View style={styles.premiumHistoryRowLeft}>
+                            <View style={[styles.premiumHistoryIconBox, claim.triggerType === 'rain' && { backgroundColor: '#EFFEB7' }]}>
+                              <Ionicons
+                                name={claim.triggerType === 'rain' ? 'shield-checkmark' : 'wallet'}
+                                size={18}
+                                color={claim.triggerType === 'rain' ? '#45501B' : '#736400'}
+                              />
+                            </View>
+                            <View>
+                              <Text style={styles.premiumHistoryRowTitle}>
+                                {claim.triggerType === 'rain' ? 'Rain Shield Payout' : 'Weekly Payout'}
+                              </Text>
+                              <Text style={styles.premiumHistoryRowSubtitle}>
+                                {new Date(claim.createdAt).toLocaleDateString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                })} • {claim.status.replace('_', ' ')}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.premiumHistoryRowAmount}>+{formatCurrency(claim.payoutAmount)}</Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </>
+              ) : (
+                <View style={styles.noProtectionCard}>
+                  <View style={styles.noProtectionIcon}>
+                    <Ionicons name="shield-half-outline" size={58} color="#736400" />
+                  </View>
+
+                  <Text style={styles.noProtectionTitle}>No Active Protection</Text>
+                  <Text style={styles.noProtectionSubtitle}>
+                    You aren&apos;t currently protected against weather disruptions. Browse our shield catalog to start coverage for your next shift.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.noProtectionBtn}
+                    onPress={handleGetProtected}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="cart-outline" size={20} color="#473D00" />
+                    <Text style={styles.noProtectionBtnText}>Buy a Premium</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )
+        ) : (
+          <>
+            {isClaimsFeatureDisabled && !shouldShowPausedPremiumDesign && (
+              <View style={styles.imBackCard}>
             <View style={styles.imBackHeader}>
               <Ionicons name="pause-circle" size={18} color="#FDE68A" />
               <Text style={styles.imBackTitle}>Claims timer paused</Text>
@@ -2395,6 +2692,8 @@ export default function HomeScreen({
             </TouchableOpacity>
           </View>
         )}
+      </>
+    )}
       </ScrollView>
 
       {!isPremiumTab && showFlagQna && (
@@ -4618,6 +4917,571 @@ const styles = StyleSheet.create({
     color: '#696710',
     fontSize: 13,
     fontWeight: '500',
+  },
+  restrictedContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 16,
+  },
+  restrictedAlertCard: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 16,
+    padding: 20,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  restrictedAlertIconContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    opacity: 0.1,
+  },
+  restrictedAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  restrictedAlertTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#991B1B',
+  },
+  restrictedBadge: {
+    backgroundColor: '#BE2D06',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  restrictedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  restrictedAlertDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#7F1D1D',
+  },
+  restrictedBentoGrid: {
+    gap: 16,
+  },
+  restrictedTimerCard: {
+    backgroundColor: '#F7F376',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 132, 44, 0.3)',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  restrictedTimerLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#696710',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  restrictedPausedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 58, 0, 0.05)',
+    borderRadius: 99,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  restrictedPausedBadgeText: {
+    color: '#3B3A00',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  restrictedReevalCard: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 16,
+    padding: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  restrictedReevalContent: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  restrictedReevalLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(92, 80, 0, 0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  restrictedReevalValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#5C5000',
+    fontFamily: 'Courier',
+    letterSpacing: -0.5,
+  },
+  restrictedReevalSubtext: {
+    fontSize: 12,
+    color: 'rgba(92, 80, 0, 0.8)',
+    marginTop: 8,
+  },
+  restrictedReevalBgIcon: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    opacity: 0.1,
+  },
+  restrictedRow: {
+    flexDirection: 'column',
+    gap: 16,
+  },
+  premiumRestrictedContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 16,
+  },
+  premiumRestrictedBanner: {
+    backgroundColor: '#BE2D06',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#BE2D06',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  premiumRestrictedBannerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  premiumRestrictedBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  premiumRestrictedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  premiumRestrictedBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  premiumRestrictedBannerDesc: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  premiumRestrictedBannerBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  premiumRestrictedBannerBtnText: {
+    color: '#BE2D06',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  premiumRestrictedSectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3B3A00',
+    marginTop: 8,
+  },
+  premiumPausedTimerCard: {
+    backgroundColor: '#FFFCCB',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 132, 44, 0.25)',
+    borderRadius: 16,
+    padding: 24,
+    gap: 24,
+  },
+  premiumPausedTimerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  premiumPausedTimerCategory: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#736400',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  premiumPausedTimerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#3B3A00',
+    marginTop: 2,
+  },
+  premiumPausedBadge: {
+    backgroundColor: 'rgba(92, 84, 0, 0.15)',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  premiumPausedBadgeText: {
+    color: '#5C5400',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  premiumPausedValueWrap: {
+    gap: 8,
+  },
+  premiumPausedValue: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#3B3A00',
+  },
+  premiumPausedDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#696710',
+  },
+  premiumPausedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  premiumPausedGridItem: {
+    width: '47.5%',
+    backgroundColor: 'rgba(92, 90, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 132, 44, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  premiumPausedGridItemFull: {
+    width: '100%',
+  },
+  premiumPausedGridItemLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#696710',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  premiumPausedGridItemValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#3B3A00',
+  },
+  premiumPausedFooter: {
+    gap: 12,
+  },
+  premiumRaiseQueryBtn: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  premiumRaiseQueryBtnRaised: {
+    backgroundColor: '#FFFCCB',
+    borderWidth: 1,
+    borderColor: 'rgba(92, 90, 0, 0.15)',
+  },
+  premiumRaiseQueryBtnText: {
+    color: '#473D00',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  premiumRaiseQueryBtnRaisedText: {
+    color: '#00E5A0',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  premiumPausedFooterCaption: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#696710',
+    lineHeight: 16,
+  },
+  premiumResolveCTAButton: {
+    backgroundColor: '#736400',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#3B3A00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    marginVertical: 8,
+  },
+  premiumResolveCTAButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  premiumRainShieldCard: {
+    backgroundColor: '#FFDF00',
+    borderRadius: 16,
+    padding: 24,
+    gap: 24,
+  },
+  premiumRainShieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  premiumRainShieldTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#5C5000',
+  },
+  premiumRainShieldBadge: {
+    backgroundColor: '#F1EE68',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  premiumRainShieldBadgeText: {
+    color: '#3B3A00',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  premiumRainShieldGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(92, 80, 0, 0.15)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(92, 80, 0, 0.15)',
+  },
+  premiumRainShieldGridItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  premiumRainShieldDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(92, 80, 0, 0.15)',
+  },
+  premiumRainShieldLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(92, 80, 0, 0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  premiumRainShieldValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#5C5000',
+  },
+  premiumRainShieldCoverageBox: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  premiumRainShieldCoverageVal: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#5C5000',
+  },
+  premiumRainShieldCoverageCaption: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(92, 80, 0, 0.8)',
+  },
+  premiumRainShieldCoverageLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: 'rgba(92, 80, 0, 0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 4,
+  },
+  premiumRainShieldRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(92, 80, 0, 0.3)',
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  premiumRainShieldRemoveBtnText: {
+    color: 'rgba(92, 80, 0, 0.8)',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  premiumHistoryTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3B3A00',
+    marginTop: 12,
+  },
+  premiumHistoryCard: {
+    backgroundColor: '#FFFCCB',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 132, 44, 0.25)',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  premiumHistoryEmpty: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumHistoryEmptyText: {
+    fontSize: 14,
+    color: '#696710',
+  },
+  premiumHistoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(134, 132, 44, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  premiumHistoryRowLast: {
+    borderBottomWidth: 0,
+  },
+  premiumHistoryRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  premiumHistoryIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 99,
+    backgroundColor: '#ECE942',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumHistoryRowTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3B3A00',
+  },
+  premiumHistoryRowSubtitle: {
+    fontSize: 11,
+    color: '#696710',
+    marginTop: 2,
+  },
+  premiumHistoryRowAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#736400',
+  },
+  restrictedResolveButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FFDF00',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    shadowColor: '#736400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  restrictedResolveButtonText: {
+    color: '#473D00',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  restrictedInfoList: {
+    backgroundColor: '#FFFCCB',
+    borderRadius: 16,
+    padding: 8,
+  },
+  restrictedInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  restrictedInfoRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(192, 189, 95, 0.15)',
+  },
+  restrictedInfoIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restrictedInfoIconBoxYellow: {
+    backgroundColor: '#ECE942',
+  },
+  restrictedInfoIconBoxGreen: {
+    backgroundColor: '#EFFEB7',
+  },
+  restrictedInfoTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  restrictedInfoTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3B3A00',
+  },
+  restrictedInfoSubtitle: {
+    fontSize: 12,
+    color: '#696710',
   },
 });
 

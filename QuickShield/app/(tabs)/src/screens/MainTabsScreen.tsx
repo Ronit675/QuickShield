@@ -70,6 +70,7 @@ export default function MainTabsScreen() {
       ? {
         workingShiftLabel: user.workingShiftLabel ?? null,
         workingTimeSlots: user.workingTimeSlots ?? null,
+        serviceZone: user.serviceZone ?? null,
       }
       : null,
   });

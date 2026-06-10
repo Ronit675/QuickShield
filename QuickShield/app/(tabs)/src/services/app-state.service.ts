@@ -109,17 +109,25 @@ const normalizeAppState = (value: unknown): PersistedAppState => {
 
 export const mapPersistedAppStateToLocationIntegrity = (
   appState: PersistedAppState,
-): Partial<LocationIntegrityState> => ({
-  isFlagged: appState.currentFlagLevel !== 'none',
-  flagLevel: appState.currentFlagLevel,
-  reasons: appState.currentReasons,
-  statusText: appState.currentStatusText,
-  lastCheckedAt: appState.lastCheckedAt,
-  redFlagCount: appState.flagCount,
-  history: appState.history,
-  redFlagDetectedAt: appState.redFlagDetectedAt,
-  normalizedAfterRedAt: appState.normalizedAfterRedAt,
-});
+): Partial<LocationIntegrityState> => {
+  const isSuspended = appState.outOfStationActive &&
+    typeof appState.outOfStationReturnLabel === 'string' &&
+    appState.outOfStationReturnLabel.startsWith('Account suspended');
+
+  return {
+    isFlagged: appState.currentFlagLevel !== 'none',
+    flagLevel: appState.currentFlagLevel,
+    reasons: appState.currentReasons,
+    statusText: appState.currentStatusText,
+    lastCheckedAt: appState.lastCheckedAt,
+    redFlagCount: appState.flagCount,
+    history: appState.history,
+    redFlagDetectedAt: appState.redFlagDetectedAt,
+    normalizedAfterRedAt: appState.normalizedAfterRedAt,
+    accountSuspendedUntilMs: isSuspended ? appState.outOfStationUntil : null,
+    lastAccountSuspendedAt: isSuspended ? appState.outOfStationSince : null,
+  };
+};
 
 export const fetchPersistedAppState = async (): Promise<PersistedAppState> => {
   const response = await api.get('/auth/app-state');

@@ -145,7 +145,7 @@ export class MlService {
             !['model_version', 'zones', 'features'].includes(key)
             && ['number', 'string', 'boolean'].includes(typeof value),
           ),
-        ),
+        ) as Record<string, number | string | boolean | null>,
         source: 'ml_service',
       };
     } catch (err) {

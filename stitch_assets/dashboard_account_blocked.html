@@ -1,0 +1,292 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QuickShield | Account Restricted</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#3b3a00",
+                    "on-primary": "#ffffff",
+                    "surface": "#fffbff",
+                    "tertiary-fixed-dim": "#e1efaa",
+                    "secondary-dim": "#5c5b00",
+                    "inverse-on-surface": "#a3a146",
+                    "outline-variant": "#c0bd5f",
+                    "on-primary-container": "#5c5000",
+                    "on-error": "#ffffff",
+                    "background": "#fffbff",
+                    "secondary-fixed": "#ece942",
+                    "surface-dim": "#ebe85b",
+                    "primary-fixed-dim": "#efd100",
+                    "on-primary-fixed-variant": "#675900",
+                    "on-secondary-fixed": "#424100",
+                    "surface-tint": "#736400",
+                    "primary-fixed": "#ffdf00",
+                    "surface-container-low": "#fffccb",
+                    "on-tertiary-fixed": "#45501b",
+                    "on-surface-variant": "#696710",
+                    "error-dim": "#b92902",
+                    "secondary": "#696700",
+                    "on-secondary-container": "#565400",
+                    "error-container": "#f95630",
+                    "primary": "#736400",
+                    "tertiary-dim": "#525d27",
+                    "surface-bright": "#fffbff",
+                    "secondary-container": "#ece942",
+                    "on-background": "#3b3a00",
+                    "on-secondary-fixed-variant": "#605e00",
+                    "on-error-container": "#520c00",
+                    "on-tertiary-container": "#57622c",
+                    "on-primary-fixed": "#473d00",
+                    "inverse-primary": "#ffdf00",
+                    "tertiary": "#5e6a32",
+                    "outline": "#86842c",
+                    "tertiary-container": "#effeb7",
+                    "surface-container-highest": "#f1ee68",
+                    "inverse-surface": "#0f0f00",
+                    "tertiary-fixed": "#effeb7",
+                    "surface-container": "#fcf983",
+                    "surface-container-high": "#f7f376",
+                    "primary-dim": "#665800",
+                    "primary-container": "#ffdf00",
+                    "on-tertiary-fixed-variant": "#616d35",
+                    "surface-variant": "#f1ee68",
+                    "error": "#be2d06",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#ddda33"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Domine", "serif"],
+                    "display": ["Domine", "serif"],
+                    "body": ["Inter", "sans-serif"],
+                    "label": ["Inter", "sans-serif"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-mesh {
+            background-color: #fffbff;
+            background-image: radial-gradient(at 0% 0%, hsla(53,100%,93%,1) 0, transparent 50%), 
+                              radial-gradient(at 50% 0%, hsla(52,100%,90%,1) 0, transparent 50%);
+        }
+        .critical-pulse {
+            animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<div class="flex items-center bg-white p-4 pb-2 justify-between">
+<div class="text-on-surface flex size-12 shrink-0 items-center" data-icon="List" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined">list</span>
+</div>
+<h2 class="text-on-surface text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center font-headline">QuickShield</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-transparent text-on-surface gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<div class="text-on-surface" data-icon="UserCircle" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+</button>
+</div>
+</div>
+<main class="max-w-md mx-auto px-4 py-6 space-y-6"><h3 class="text-on-surface tracking-light text-2xl font-bold leading-tight px-4 text-left pb-2 pt-5 font-headline">Hello, Rider!</h3>
+<!-- Hero Alert Card -->
+<section class="relative overflow-hidden rounded-xl bg-error-container text-on-error-container p-6 shadow-lg border border-error/20">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[80px]" style="font-variation-settings: 'FILL' 1;">report_problem</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-headline font-bold text-xl">Account Restricted</span>
+</div>
+<div class="inline-flex items-center px-2 py-0.5 rounded bg-error text-white text-xs font-bold tracking-wider mb-4 uppercase critical-pulse">
+                    Red Flag Active
+                </div>
+<p class="text-body-md leading-relaxed opacity-90">
+                    Integrity breach detected. Your account features are currently disabled. Please review the flags to restore access.
+                </p>
+</div>
+</section>
+<!-- Bento Grid Section -->
+<div class="grid grid-cols-2 gap-4">
+<!-- Disruption Timer Card -->
+<div class="col-span-2 sm:col-span-1 bg-surface-container-high rounded-xl p-5 flex flex-col justify-between min-h-[160px] shadow-sm">
+<div>
+<div class="flex justify-between items-start">
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Disruption Timer</span>
+<span class="bg-error/10 text-error px-2 py-0.5 rounded-full text-[10px] font-bold border border-error/20 uppercase" style="opacity: 0.7;">Paused</span>
+</div>
+<div class="mt-4 font-headline text-3xl font-black text-on-surface tabular-nums">
+                        02:15:00
+                    </div>
+</div>
+<div class="mt-4 h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-error-dim w-3/4 rounded-full"></div>
+</div>
+</div>
+<!-- Mini Status Card -->
+<div class="bg-primary-container rounded-xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container text-3xl mb-2">verified_user</span>
+<span class="text-[10px] font-bold uppercase text-on-primary-container opacity-70">Security Tier</span>
+<span class="font-headline font-bold text-on-primary-container">LEVEL 0</span>
+</div>
+<!-- Mini Activity Card -->
+<div class="bg-surface-container rounded-xl p-5 flex flex-col items-center justify-center text-center shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary text-3xl mb-2">history</span>
+<span class="text-[10px] font-bold uppercase text-on-surface-variant">Last Active</span>
+<span class="font-headline font-bold text-on-surface">14m ago</span>
+</div>
+</div>
+<!-- Primary CTA -->
+<button class="w-full bg-primary-fixed hover:bg-primary transition-all active:scale-[0.98] py-5 px-6 rounded-xl shadow-md group flex items-center justify-between">
+<span class="font-headline font-bold text-xl text-on-primary-fixed">View &amp; Resolve Flags</span>
+<span class="material-symbols-outlined text-on-primary-fixed group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<!-- Information List -->
+<div class="bg-surface-container-low rounded-xl p-2">
+<div class="flex items-center p-4 gap-4 border-b border-outline-variant/10">
+<div class="bg-secondary-container h-10 w-10 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">gavel</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Policy Integrity</p>
+<p class="text-xs text-on-surface-variant">Violation ID: #QS-88210</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex items-center p-4 gap-4">
+<div class="bg-tertiary-container h-10 w-10 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary">support_agent</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Support Appeal</p>
+<p class="text-xs text-on-surface-variant">Waiting for documentation</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- NavigationDrawer (Hidden by default, triggered by menu) -->
+<aside class="fixed inset-y-0 left-0 z-[60] flex flex-col p-4 h-full w-80 rounded-r-xl bg-surface shadow-2xl transform -translate-x-full transition-transform duration-300" id="nav-drawer">
+<div class="flex flex-col h-full">
+<div class="flex items-center gap-4 mb-8 p-2">
+<div class="h-12 w-12 rounded-full overflow-hidden bg-surface-container-highest">
+<img alt="Rider Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB36Z-ChTV6S5Yw08dV-EK2gL8HPm8YfrzVUWRkkS1_Ux2xnYydZNUB-pUJFTqDWpA6i5yzuBGCdn5_5hMS9z6Ku3HnyVZo0s4K-QoAYKOBCl5Hgl29pq4P2WW2fwTPE7BWVPHejAk88nQg63NpvIMJSWK8LVuwnivnPGbMPuLFqWuILDtiVvS0-3U0pRINKFMh1xv1i0xQ1tP1iJ3HUbs7wMGiFc4KmVwZI_LgMEJBP6hLGsOOOxQp_8mge7QpXSRcPoapU1zv2lUs">
+</div>
+<div>
+<h3 class="text-primary font-headline font-black text-lg">Rider Name</h3>
+<p class="text-error text-xs font-bold">Account Restricted</p>
+<p class="text-on-surface-variant text-[10px]">ID: 98210</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-4 p-3 text-on-surface hover:bg-primary/10 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body text-body-md">Account Settings</span>
+</a>
+<a class="flex items-center gap-4 p-3 text-on-surface hover:bg-primary/10 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body text-body-md">History</span>
+</a>
+<a class="flex items-center gap-4 p-3 text-on-surface hover:bg-primary/10 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body text-body-md">Support</span>
+</a>
+<a class="flex items-center gap-4 p-3 text-on-surface hover:bg-primary/10 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body text-body-md">Terms of Service</span>
+</a>
+</nav>
+</div>
+</aside>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface-container rounded-t-xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 active:scale-90 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label text-[10px] uppercase tracking-wider mt-0.5">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label text-[10px] uppercase tracking-wider mt-0.5">Insurance</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label text-[10px] uppercase tracking-wider mt-0.5">Payouts</span>
+</button>
+<button class="relative flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-label text-[10px] uppercase tracking-wider mt-0.5">Flags</span>
+<!-- Red dot/badge -->
+<span class="absolute top-0 right-1 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface-container"></span>
+</button>
+</nav>
+<script>
+        // Simple Interaction for Drawer
+        const menuBtn = document.querySelector('header button');
+        const drawer = document.getElementById('nav-drawer');
+        let isOpen = false;
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isOpen = !isOpen;
+            if(isOpen) {
+                drawer.classList.remove('-translate-x-full');
+            } else {
+                drawer.classList.add('-translate-x-full');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (isOpen && !drawer.contains(e.target)) {
+                isOpen = false;
+                drawer.classList.add('-translate-x-full');
+            }
+        });
+
+        // Micro-interaction for the timer
+        let seconds = 8100; // 02:15:00
+        const timerDisplay = document.querySelector('.font-headline.text-3xl');
+        
+        // This is a "PAUSED" screen as requested, so we won't count down, 
+        // but let's keep the logic if needed for future activation.
+        function formatTime(s) {
+            const h = Math.floor(s / 3600).toString().padStart(2, '0');
+            const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+            const sc = (s % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${sc}`;
+        }
+        
+        // Subtle flicker effect on the "PAUSED" label for urgency
+        setInterval(() => {
+            const badge = document.querySelector('.bg-error\\/10');
+            badge.style.opacity = badge.style.opacity === '0.7' ? '1' : '0.7';
+        }, 1000);
+    </script>
+
+
+</body></html>
