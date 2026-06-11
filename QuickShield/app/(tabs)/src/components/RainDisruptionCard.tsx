@@ -20,6 +20,7 @@ type RainDisruptionCardProps = {
   user: AuthUser | null;
   isPaused?: boolean;
   pausedUntilLabel?: string | null;
+  pausedSinceMs?: number | null;
 };
 
 const WEATHER_REFRESH_INTERVAL_MS = 60_000;
@@ -57,6 +58,7 @@ export default function RainDisruptionCard({
   user,
   isPaused = false,
   pausedUntilLabel = null,
+  pausedSinceMs = null,
 }: RainDisruptionCardProps) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
@@ -131,10 +133,19 @@ export default function RainDisruptionCard({
     setLastUpdatedAt(new Date());
     setErrorMessage(null);
     setRainfallRateMmPerHr(trackingState.rainfallRateMmPerHr);
-    setWeatherSummary(trackingState.weatherSummary);
+
+    if (isPaused) {
+      setWeatherSummary(
+        pausedUntilLabel
+          ? `Claims timer is paused until ${pausedUntilLabel}. Tap I'm Back on Home after returning.`
+          : "Claims timer is paused. Tap I'm Back on Home after returning.",
+      );
+    } else {
+      setWeatherSummary(trackingState.weatherSummary);
+    }
 
     if (!trackingState.isTracking) {
-      if (wasTracking && previousTrackedStartMs && previousClaimSessionKey && policy?.status === 'active') {
+      if (wasTracking && previousTrackedStartMs && previousClaimSessionKey && policy?.status === 'active' && !isPaused) {
         const finalDisruptedHours = (Date.now() - previousTrackedStartMs) / MS_PER_HOUR;
         await creditClaimUpToHours(previousClaimSessionKey, finalDisruptedHours);
       }
@@ -150,27 +161,10 @@ export default function RainDisruptionCard({
     setTrackedClaimSessionKey(trackingState.trackedClaimSessionKey);
     setTrackedWindowKey(trackingState.trackedWindowKey);
     setIsTracking(true);
-  }, [creditClaimUpToHours, policy?.status, user]);
+  }, [creditClaimUpToHours, policy?.status, user, isPaused, pausedUntilLabel]);
 
   useEffect(() => {
-    if (isPaused) {
-      setLoading(false);
-      setErrorMessage(null);
-      setIsTracking(false);
-      setTrackedStartMs(null);
-      setTrackedClaimSessionKey(null);
-      setTrackedWindowKey(null);
-      setRainfallRateMmPerHr(null);
-      setWeatherSummary(
-        pausedUntilLabel
-          ? `Claims timer is paused until ${pausedUntilLabel}. Tap I'm Back on Home after returning.`
-          : "Claims timer is paused. Tap I'm Back on Home after returning.",
-      );
-    }
-  }, [isPaused, pausedUntilLabel]);
-
-  useEffect(() => {
-    if (!isActive || isPaused) {
+    if (!isActive) {
       return;
     }
 
@@ -215,9 +209,13 @@ export default function RainDisruptionCard({
       clearInterval(refreshInterval);
       clearInterval(timerInterval);
     };
-  }, [isActive, isPaused, refreshRainStatus]);
+  }, [isActive, refreshRainStatus]);
 
-  const elapsedMs = isTracking && trackedStartMs ? Math.max(0, clockMs - trackedStartMs) : 0;
+  const elapsedMs = isTracking && trackedStartMs
+    ? (isPaused && pausedSinceMs
+        ? Math.max(0, pausedSinceMs - trackedStartMs)
+        : Math.max(0, clockMs - trackedStartMs))
+    : 0;
   const elapsedTrackedHours = isTracking && trackedStartMs
     ? Math.floor(elapsedMs / MS_PER_HOUR)
     : 0;
@@ -341,7 +339,7 @@ export default function RainDisruptionCard({
         ? t('raindisruption.statusStandby')
         : t('raindisruption.statusIdle');
   const claimLabel = isPaused
-    ? 'Paused'
+    ? (currentAccruedClaimAmount > 0 ? formatCurrency(currentAccruedClaimAmount) : 'Paused')
     : policy?.status === 'active'
     ? formatCurrency(currentAccruedClaimAmount)
     : t('raindisruption.noPlan');
@@ -380,7 +378,7 @@ export default function RainDisruptionCard({
       </View>
 
       <Text style={styles.timerValue}>
-        {isPaused ? 'Paused' : isTracking ? formatDuration(elapsedMs) : t('raindisruption.noDisruption')}
+        {isPaused ? (isTracking && elapsedMs > 0 ? formatDuration(elapsedMs) : 'Paused') : isTracking ? formatDuration(elapsedMs) : t('raindisruption.noDisruption')}
       </Text>
       <Text style={styles.summaryText}>
         {isPaused

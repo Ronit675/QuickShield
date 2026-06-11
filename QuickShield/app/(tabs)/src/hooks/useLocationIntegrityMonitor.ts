@@ -561,7 +561,7 @@ export const useLocationIntegrityMonitor = ({
               nextFlagLevel = 'red';
               nextRedFlagDetectedAt = now; // Start persistence timer
               nextNormalizedAfterRedAt = null; // Clear recovery timer
-              nextConsecutiveInnerRadiusPoints = 0; // Restart 5-check window
+              nextConsecutiveInnerRadiusPoints = Math.min(current.consecutiveInnerRadiusPoints + 1, DURATION_CHECK_GPS_POINTS);
               redCycleAnchorLocationRef.current = null;
               redCycleAnchorWeatherRef.current = null;
               locationChangeCountInCurrentCycleRef.current = 0;
@@ -637,14 +637,15 @@ export const useLocationIntegrityMonitor = ({
                 if (!anchorLocation) {
                   redCycleAnchorLocationRef.current = currentOutsideLocation;
                   redCycleAnchorWeatherRef.current = currentLocationWeather;
-                  nextConsecutiveInnerRadiusPoints = 1;
+                  nextConsecutiveInnerRadiusPoints = nextConsecutiveInnerRadiusPoints > 0
+                    ? Math.min(nextConsecutiveInnerRadiusPoints + 1, DURATION_CHECK_GPS_POINTS)
+                    : 1;
                 } else {
                   const anchorDistanceKm = calculateDistanceKm(anchorLocation, currentOutsideLocation);
                   if (anchorDistanceKm > LOCATION_CHANGE_RESTART_THRESHOLD_KM) {
-                    // Location changed during 5 checks; restart checks for this new location.
+                    // Location changed during 5 checks; do NOT restart checks for this new location, increment instead.
                     redCycleAnchorLocationRef.current = currentOutsideLocation;
                     redCycleAnchorWeatherRef.current = currentLocationWeather;
-                    nextConsecutiveInnerRadiusPoints = 1;
                     locationChangeCountInCurrentCycleRef.current += 1;
                     const matchesRainAndWorkingSlot = isHeavyRainAtChangedLocation && isWithinWorkingHoursNow;
                     locationChangeConditionHitsInCurrentCycleRef.current = [
@@ -680,13 +681,13 @@ export const useLocationIntegrityMonitor = ({
                       shouldApplyInvigilatingHoldThisCheck =
                         nextInvigilatingEventTimestamps.length >= INVIGILATING_EVENTS_MIN_FOR_HOLD;
                     }
-                  } else {
-                    // Only advance 5-check count while the outside location is unchanged.
-                    nextConsecutiveInnerRadiusPoints = Math.min(
-                      nextConsecutiveInnerRadiusPoints + 1,
-                      DURATION_CHECK_GPS_POINTS,
-                    );
                   }
+
+                  // In both changed and unchanged cases, we increment the count instead of resetting to 1.
+                  nextConsecutiveInnerRadiusPoints = Math.min(
+                    nextConsecutiveInnerRadiusPoints + 1,
+                    DURATION_CHECK_GPS_POINTS,
+                  );
                 }
                 if (nextConsecutiveInnerRadiusPoints >= DURATION_CHECK_GPS_POINTS) {
                   const anchorWeather = redCycleAnchorWeatherRef.current;

@@ -1,0 +1,138 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QuickShield Rider Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"surface-container-low": "#fffccb", "on-secondary": "#ffffff", "on-surface-variant": "#696710", "on-primary-fixed": "#473d00", "on-primary": "#ffffff", "on-primary-container": "#5c5000", "secondary-dim": "#5c5b00", "on-tertiary-fixed-variant": "#616d35", outline: "#86842c", "surface-container": "#fcf983", "on-surface": "#3b3a00", "primary-fixed-dim": "#efd100", tertiary: "#5e6a32", "secondary-fixed-dim": "#ddda33", "on-error-container": "#520c00", "surface-variant": "#f1ee68", "on-tertiary": "#ffffff", "surface-bright": "#fffbff", "tertiary-dim": "#525d27", "outline-variant": "#c0bd5f", "tertiary-fixed": "#effeb7", "on-secondary-container": "#565400", "inverse-primary": "#ffdf00", "error-container": "#f95630", "on-secondary-fixed-variant": "#605e00", "secondary-fixed": "#ece942", primary: "#736400", "primary-container": "#ffdf00", "surface-container-high": "#f7f376", background: "#fffbff", "surface-tint": "#736400", "surface-container-lowest": "#ffffff", "on-background": "#3b3a00", "on-secondary-fixed": "#424100", "primary-fixed": "#ffdf00", "surface-container-highest": "#f1ee68", "on-error": "#ffffff", "inverse-on-surface": "#a3a146", surface: "#fffbff", "inverse-surface": "#0f0f00", secondary: "#696700", "on-tertiary-fixed": "#45501b", error: "#be2d06", "tertiary-fixed-dim": "#e1efaa", "secondary-container": "#ece942", "tertiary-container": "#effeb7", "surface-dim": "#ebe85b", "on-tertiary-container": "#57622c", "primary-dim": "#665800", "error-dim": "#b92902", "on-primary-fixed-variant": "#675900"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {headline: ["Domine"], display: ["Domine"], body: ["Inter"], label: ["Inter"]}, fontSize: {}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Domine', serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<div class="flex items-center bg-white p-4 pb-2 justify-between">
+<div class="text-on-surface flex size-12 shrink-0 items-center" data-icon="List" data-size="24px" data-weight="regular">
+<span class="material-symbols-outlined">list</span>
+</div>
+<h2 class="text-on-surface text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center font-headline">QuickShield</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-transparent text-on-surface gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+  <span class="material-symbols-outlined">account_circle</span>
+</div>
+</button>
+</div>
+</div><h3 class="text-on-surface tracking-light text-2xl font-bold leading-tight px-4 text-left pb-2 pt-5 font-headline">Hello, Rider!</h3>
+<main class="max-w-md mx-auto px-4 py-6 space-y-6">
+<!-- Hero Section: No Active Protection -->
+<section class="relative h-64 rounded-xl overflow-hidden shadow-lg group">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
+<img alt="Rider on road" class="w-full h-full object-cover" data-alt="A cinematic, high-angle shot of a lone motorcycle rider navigating a slick, rain-drenched urban road during twilight. The scene is illuminated by glowing amber streetlights and neon reflections on the asphalt, creating a vibrant yet moody atmosphere. The visual style is crisp and modern, emphasizing the vulnerability and solitude of the rider in challenging weather conditions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAIP8p0LM3XBzmhdJsqOGNFuZzh9YJalEAeaXS_ZHIH_GOVW-avJPA7MKxiRNt_aAFBlfoS2hFmm3qWen-djXUmLHbdq8kjC3iQENFugygj-htk3Np0nJZ-18EWcFWasCBOcWGj9DW9qiD4mLcm4-beySyFAMPSqDuFfEPuub8NVuvG3EfFUsIJmI_RUz4ycBgviJzM6iMHXoES1FqJAJdE59QCW72snJDhoGmuej4q3P4JvrVLQr4pBXzsLbLr9i8rxiOxTSaP249">
+<div class="absolute inset-0 z-20 p-6 flex flex-col justify-end">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-error-container bg-white rounded-full p-1 text-sm" style="font-variation-settings: &quot;FILL&quot; 1;">gpp_maybe</span>
+<span class="text-white font-bold text-sm tracking-wide uppercase">No Active Protection</span>
+</div>
+<h2 class="text-white text-2xl font-black mb-4">You're currently unprotected.</h2>
+<button class="bg-primary-container text-on-primary-container font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg">
+                    Browse Protection
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- Weather Alert Card -->
+<section class="bg-error-container/10 border border-error-container/20 rounded-xl p-4 flex items-center gap-4">
+<div class="bg-error-container text-white p-3 rounded-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">rainy</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface text-sm">Weather Warning</h3>
+<p class="text-on-surface-variant text-xs font-medium">Heavy rain expected in 20 mins. Stay safe and get covered.</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</section>
+<!-- Stats Bento Grid -->
+<section class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between aspect-square">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary bg-primary-container/30 p-2 rounded-lg">timer</span>
+<span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary-container/20 rounded-full">WEEKLY</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Covered</p>
+<p class="text-3xl font-black text-on-surface">0<span class="text-sm font-bold ml-1">hrs</span></p>
+</div>
+</div>
+<div class="bg-surface-container-high p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between aspect-square">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary bg-secondary-container/30 p-2 rounded-lg">payments</span>
+<span class="text-[10px] font-bold text-secondary px-2 py-0.5 bg-secondary-container/20 rounded-full">YTD</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Earned</p>
+<p class="text-3xl font-black text-on-surface">$1,240</p>
+</div>
+</div>
+</section>
+<!-- Recent Activity List -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline font-bold text-lg">Recent Activity</h3>
+<button class="text-primary font-bold text-sm">View All</button>
+</div>
+<div class="space-y-3">
+<!-- Activity Item 1 -->
+<div class="flex items-center justify-between p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+</div>
+<div>
+<p class="font-bold text-sm">Weekly Payout</p>
+<p class="text-xs text-on-surface-variant">Completed • Oct 12</p>
+</div>
+</div>
+<p class="font-black text-on-surface">+$420.00</p>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex items-center justify-between p-4 bg-white rounded-xl border border-outline-variant/10 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary">shield_moon</span>
+</div>
+<div>
+<p class="font-bold text-sm">Safety Reward</p>
+<p class="text-xs text-on-surface-variant">Credited • Oct 10</p>
+</div>
+</div>
+<p class="font-black text-tertiary">+$15.00</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 w-full flex justify-around items-center px-4 py-3 bg-surface dark:bg-surface-dim border-t border-outline-variant/20 z-50 rounded-t-xl shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"><a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-2" href="#"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span><span class="font-label text-xs font-bold">Dashboard</span></a><a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2" href="#"><span class="material-symbols-outlined">shield</span><span class="font-label text-xs font-medium">Insurance</span></a><a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2" href="#"><span class="material-symbols-outlined">payments</span><span class="font-label text-xs font-medium">Payouts</span></a><a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2" href="#"><span class="material-symbols-outlined">flag</span><span class="font-label text-xs font-medium">Flags</span></a></nav>
+
+
+
+
+
+
+</body></html>

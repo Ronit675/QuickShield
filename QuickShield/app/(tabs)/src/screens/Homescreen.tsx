@@ -43,6 +43,7 @@ type HomeScreenProps = {
   bottomInset?: number;
   variant?: 'home' | 'premium';
   onOpenPremium?: () => void;
+  onOpenFlags?: () => void;
   locationIntegrity: LocationIntegrityState;
   isClaimsFeatureDisabled: boolean;
   setIsClaimsFeatureDisabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -332,6 +333,7 @@ export default function HomeScreen({
   bottomInset = 40,
   variant = 'home',
   onOpenPremium,
+  onOpenFlags,
   locationIntegrity,
   isClaimsFeatureDisabled,
   setIsClaimsFeatureDisabled,
@@ -360,6 +362,7 @@ export default function HomeScreen({
   const [miniRainfallRateMmPerHr, setMiniRainfallRateMmPerHr] = useState<number | null>(null);
   const [miniWeatherSummary, setMiniWeatherSummary] = useState(t('home.waitingDisruption'));
   const [miniClockMs, setMiniClockMs] = useState(Date.now());
+  const [miniIsWithinWorkingWindow, setMiniIsWithinWorkingWindow] = useState(true);
   const [showFlagQna, setShowFlagQna] = useState(false);
   const [flagQnaAnswer, setFlagQnaAnswer] = useState<'yes' | 'no' | null>(null);
   const [flagQnaStep, setFlagQnaStep] = useState<'q1' | 'return_date'>('q1');
@@ -449,15 +452,6 @@ export default function HomeScreen({
     || !user?.workingTimeSlots?.length;
 
   const refreshMiniDisruptionState = useCallback(async () => {
-    if (isClaimsFeatureDisabled) {
-      setMiniTrackingLoading(false);
-      setMiniIsTracking(false);
-      setMiniTrackedStartMs(null);
-      setMiniRainfallRateMmPerHr(null);
-      setMiniWeatherSummary(pausedClaimsMessage);
-      return;
-    }
-
     if (needsPlatformConnectForMiniTimer) {
       setMiniTrackingLoading(false);
       setMiniIsTracking(false);
@@ -468,10 +462,11 @@ export default function HomeScreen({
     }
 
     const trackingState = await getRainDisruptionTrackingState(user);
-    setMiniWeatherSummary(trackingState.weatherSummary);
+    setMiniWeatherSummary(isClaimsFeatureDisabled ? pausedClaimsMessage : trackingState.weatherSummary);
     setMiniIsTracking(trackingState.isTracking);
     setMiniTrackedStartMs(trackingState.trackedStartMs);
     setMiniRainfallRateMmPerHr(trackingState.rainfallRateMmPerHr);
+    setMiniIsWithinWorkingWindow(trackingState.isWithinWorkingWindow);
   }, [isClaimsFeatureDisabled, needsPlatformConnectForMiniTimer, pausedClaimsMessage, t, user]);
 
   useEffect(() => {
@@ -526,17 +521,14 @@ export default function HomeScreen({
   }, [isActive, refreshMiniDisruptionState, t]);
 
   const miniElapsedMs = miniIsTracking && miniTrackedStartMs
-    ? Math.max(0, miniClockMs - miniTrackedStartMs)
+    ? (isClaimsFeatureDisabled && outOfTownSinceMs
+        ? Math.max(0, outOfTownSinceMs - miniTrackedStartMs)
+        : Math.max(0, miniClockMs - miniTrackedStartMs))
     : 0;
   const shouldShowActiveDisruptionDesign =
     !isClaimsFeatureDisabled
     && !needsPlatformConnectForMiniTimer
     && policy?.status === 'active'
-    && miniIsTracking;
-  const shouldShowInactiveDisruptionDesign =
-    !isClaimsFeatureDisabled
-    && !needsPlatformConnectForMiniTimer
-    && policy?.status !== 'active'
     && miniIsTracking;
   const shouldShowPausedPremiumDesign =
     isPremiumTab
@@ -551,7 +543,8 @@ export default function HomeScreen({
   const isLightDashboardState =
     isPremiumEmptyState ||
     isActiveProtectionDashboard ||
-    shouldShowInactiveDisruptionDesign ||
+    (!isPremiumTab && policy?.status !== 'active') ||
+    (isPremiumTab && !miniIsWithinWorkingWindow) ||
     shouldShowPausedPremiumDesign ||
     (isClaimsFeatureDisabled && isRedFlagPause) ||
     (!isPremiumTab && policy?.status === 'active') ||
@@ -1131,6 +1124,16 @@ export default function HomeScreen({
                 {/* Disruption Timer Card */}
                 <View style={styles.restrictedTimerCard}>
                   <Text style={styles.restrictedTimerLabel}>Disruption Timer</Text>
+                  <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 36, fontWeight: '900', color: '#3B3A00', letterSpacing: -0.5 }}>
+                      {miniElapsedMs > 0 ? formatClockDuration(miniElapsedMs) : '00:00:00'}
+                    </Text>
+                    {miniAccruedClaimAmount > 0 && (
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#5C5000', marginTop: 4 }}>
+                        Accrued: {formatCurrency(miniAccruedClaimAmount)}
+                      </Text>
+                    )}
+                  </View>
                   <View style={styles.restrictedPausedBadge}>
                     <Ionicons name="pause-circle" size={16} color="#3B3A00" style={{ marginRight: 6 }} />
                     <Text style={styles.restrictedPausedBadgeText}>PAUSED</Text>
@@ -1154,7 +1157,7 @@ export default function HomeScreen({
               <TouchableOpacity
                 style={styles.restrictedResolveButton}
                 activeOpacity={0.88}
-                onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
               >
                 <Text style={styles.restrictedResolveButtonText}>View & Resolve Flags</Text>
                 <Ionicons name="arrow-forward" size={20} color="#473D00" />
@@ -1202,7 +1205,7 @@ export default function HomeScreen({
                 <TouchableOpacity
                   style={styles.premiumRestrictedBannerBtn}
                   activeOpacity={0.88}
-                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
                 >
                   <Text style={styles.premiumRestrictedBannerBtnText}>Resolve Now</Text>
                 </TouchableOpacity>
@@ -1225,7 +1228,9 @@ export default function HomeScreen({
                     </View>
 
                     <View style={styles.premiumPausedValueWrap}>
-                      <Text style={styles.premiumPausedValue}>Paused</Text>
+                      <Text style={styles.premiumPausedValue}>
+                        {miniElapsedMs > 0 ? formatClockDuration(miniElapsedMs) : 'Paused'}
+                      </Text>
                       <Text style={styles.premiumPausedDesc}>
                         Claims timer is paused until {selectedReturnDateLabel || 'tomorrow'}. Tap I&apos;m Back on Home after returning.
                       </Text>
@@ -1238,7 +1243,9 @@ export default function HomeScreen({
                       </View>
                       <View style={styles.premiumPausedGridItem}>
                         <Text style={styles.premiumPausedGridItemLabel}>Claim</Text>
-                        <Text style={styles.premiumPausedGridItemValue}>Paused</Text>
+                        <Text style={styles.premiumPausedGridItemValue}>
+                          {miniAccruedClaimAmount > 0 ? formatCurrency(miniAccruedClaimAmount) : 'Paused'}
+                        </Text>
                       </View>
                       <View style={[styles.premiumPausedGridItem, styles.premiumPausedGridItemFull]}>
                         <Text style={styles.premiumPausedGridItemLabel}>Rain rate</Text>
@@ -1279,7 +1286,7 @@ export default function HomeScreen({
                   <TouchableOpacity
                     style={styles.premiumResolveCTAButton}
                     activeOpacity={0.88}
-                    onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                    onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
                   >
                     <Ionicons name="flag" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.premiumResolveCTAButtonText}>View & Resolve Flags</Text>
@@ -1556,6 +1563,7 @@ export default function HomeScreen({
                 isActive={isActive}
                 isPaused={isClaimsFeatureDisabled}
                 pausedUntilLabel={selectedReturnDateLabel}
+                pausedSinceMs={outOfTownSinceMs}
                 onPolicyRefresh={syncPolicy}
                 policy={policy}
                 user={user}
@@ -1565,7 +1573,7 @@ export default function HomeScreen({
             <View style={[styles.greetingHeaderRow, { paddingTop: 4, paddingBottom: 8 }]}>
               <Text style={styles.activeDashboardGreeting}>Hello, Rider!</Text>
               <TouchableOpacity
-                onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
                 activeOpacity={0.8}
                 style={[
                   styles.compactFlagCheck,
@@ -1736,7 +1744,7 @@ export default function HomeScreen({
                   {t('home.greeting')} 🧑‍✈️
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
                   activeOpacity={0.8}
                   style={[
                     styles.compactFlagCheck,
@@ -1946,14 +1954,14 @@ export default function HomeScreen({
                 </View>
               </View>
             </View>
-          ) : shouldShowInactiveDisruptionDesign ? (
+          ) : policy?.status !== 'active' ? (
             <View style={styles.redesignedInactiveDashboardContainer}>
               <View style={[styles.greetingHeaderRow, { paddingHorizontal: 0, paddingTop: 4, paddingBottom: 8 }]}>
                 <Text style={styles.redesignedDashboardGreeting}>
                   {t('home.greeting')} 🧑‍✈️
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push({ pathname: '/home', params: { tab: 'flags' } })}
+                  onPress={() => onOpenFlags ? onOpenFlags() : router.push({ pathname: '/home', params: { tab: 'flags' } })}
                   activeOpacity={0.8}
                   style={[
                     styles.compactFlagCheck,
@@ -2446,6 +2454,7 @@ export default function HomeScreen({
                       isActive={isActive}
                       isPaused={isClaimsFeatureDisabled}
                       pausedUntilLabel={selectedReturnDateLabel}
+                      pausedSinceMs={outOfTownSinceMs}
                       onPolicyRefresh={syncPolicy}
                       policy={policy}
                       user={user}
@@ -2533,12 +2542,81 @@ export default function HomeScreen({
                     </TouchableOpacity>
                   </View>
                 </View>
+              ) : !miniIsWithinWorkingWindow ? (
+                <>
+                  {/* Monitoring Status Card */}
+                  <View style={styles.monitoringStatusCard}>
+                    <View style={styles.monitoringIconContainer}>
+                      <Ionicons name="sunny" size={36} color="#424100" />
+                    </View>
+                    <Text style={styles.monitoringTitle}>Skies are Clear</Text>
+                    <Text style={styles.monitoringSubtitle}>
+                      Monitoring for Disruptions. Our real-time satellite data confirms no significant rain in your area.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.monitoringLink}
+                      onPress={() => router.push('/weather')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.monitoringLinkText}>Check Weather Details</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#736400" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Rain Shield Card */}
+                  <View style={styles.noDisruptionShieldCard}>
+                    <View style={styles.noDisruptionShieldHeader}>
+                      <View style={styles.noDisruptionShieldHeaderLeft}>
+                        <View style={styles.noDisruptionShieldIconBox}>
+                          <Ionicons name="umbrella" size={20} color="#FFFBFF" />
+                        </View>
+                        <View>
+                          <Text style={styles.noDisruptionShieldTitle}>Rain Shield Active</Text>
+                          <Text style={styles.noDisruptionShieldSubtitle}>Continuous protection enabled</Text>
+                        </View>
+                      </View>
+                      <View style={styles.noDisruptionPeriodBox}>
+                        <Text style={styles.noDisruptionPeriodVal}>{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'} Left</Text>
+                        <Text style={styles.noDisruptionPeriodLabel}>Policy Period</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.noDisruptionStatsGrid}>
+                      <View style={styles.noDisruptionStatItem}>
+                        <Text style={styles.noDisruptionStatLabel}>Premium</Text>
+                        <Text style={styles.noDisruptionStatValue}>{formatCurrency(policy.weeklyPremium)}</Text>
+                      </View>
+                      <View style={styles.noDisruptionStatItem}>
+                        <Text style={styles.noDisruptionStatLabel}>Paid Out</Text>
+                        <Text style={styles.noDisruptionStatValue}>{formatCurrency(totalPaidOut)}</Text>
+                      </View>
+                      <View style={styles.noDisruptionStatItem}>
+                        <Text style={styles.noDisruptionStatLabel}>Coverage</Text>
+                        <Text style={styles.noDisruptionStatValue}>{formatCurrency(policy.coveragePerDay)}</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.noDisruptionRemoveBtn, removingPolicy && styles.removePolicyBtnDisabled]}
+                      onPress={confirmRemoveActivePolicy}
+                      disabled={removingPolicy}
+                      activeOpacity={0.85}
+                    >
+                      {removingPolicy ? (
+                        <ActivityIndicator color="#BE2D06" />
+                      ) : (
+                        <Text style={styles.noDisruptionRemoveBtnText}>Remove current subscription</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
                 <>
                   <RainDisruptionCard
                     isActive={isActive}
                     isPaused={isClaimsFeatureDisabled}
                     pausedUntilLabel={selectedReturnDateLabel}
+                    pausedSinceMs={outOfTownSinceMs}
                     onPolicyRefresh={syncPolicy}
                     policy={policy}
                     user={user}
@@ -3935,6 +4013,152 @@ const styles = StyleSheet.create({
   },
   removePolicyBtnDisabled: { opacity: 0.7 },
   removePolicyBtnText: { fontSize: 14, fontWeight: '700', color: '#FCA5A5' },
+
+  monitoringStatusCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 132, 44, 0.1)',
+  },
+  monitoringIconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#ece942',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  monitoringTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#3B3A00',
+    marginBottom: 4,
+  },
+  monitoringSubtitle: {
+    fontSize: 14,
+    color: '#696710',
+    lineHeight: 20,
+    maxWidth: 280,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  monitoringLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  monitoringLinkText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#736400',
+  },
+  noDisruptionShieldCard: {
+    backgroundColor: '#fcf983',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#c0bd5f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  noDisruptionShieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  noDisruptionShieldHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  noDisruptionShieldIconBox: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#736400',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noDisruptionShieldTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3B3A00',
+  },
+  noDisruptionShieldSubtitle: {
+    fontSize: 12,
+    color: '#696710',
+  },
+  noDisruptionPeriodBox: {
+    alignItems: 'flex-end',
+  },
+  noDisruptionPeriodVal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#736400',
+  },
+  noDisruptionPeriodLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#696710',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  noDisruptionStatsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  noDisruptionStatItem: {
+    flex: 1,
+    backgroundColor: '#fffccb',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(134, 130, 44, 0.1)',
+  },
+  noDisruptionStatLabel: {
+    fontSize: 10,
+    color: '#696710',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  noDisruptionStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3B3A00',
+  },
+  noDisruptionRemoveBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(249, 86, 48, 0.08)',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(190, 45, 6, 0.15)',
+  },
+  noDisruptionRemoveBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#be2d06',
+  },
 
   historyTitle: {
     color: '#3B3A00',

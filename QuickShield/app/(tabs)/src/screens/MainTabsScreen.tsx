@@ -371,6 +371,7 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="home"
             onOpenPremium={() => setActiveTab('premium')}
+            onOpenFlags={() => setActiveTab('flags')}
             locationIntegrity={displayLocationIntegrity}
             isClaimsFeatureDisabled={isClaimsFeatureDisabled}
             setIsClaimsFeatureDisabled={setIsClaimsFeatureDisabled}
@@ -408,6 +409,7 @@ export default function MainTabsScreen() {
             bottomInset={contentBottomInset}
             variant="premium"
             onOpenPremium={() => setActiveTab('premium')}
+            onOpenFlags={() => setActiveTab('flags')}
             locationIntegrity={displayLocationIntegrity}
             isClaimsFeatureDisabled={isClaimsFeatureDisabled}
             setIsClaimsFeatureDisabled={setIsClaimsFeatureDisabled}

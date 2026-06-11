@@ -1,4 +1,4 @@
-<!DOCTYPE html><html class="light" lang="en"><head>
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
 <title>Insurance - Monitoring</title>
@@ -216,24 +216,23 @@
 </section>
 </main>
 <!-- Bottom Navigation Bar -->
-<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container-lowest dark:bg-surface-container-low border-t border-outline-variant shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
-<span class="material-symbols-outlined">home</span>
-<span class="font-body text-label-sm">Home</span>
-</a>
-<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1.5 transition-all active:scale-90 duration-200" href="#">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
-<span class="font-body text-label-sm font-bold">Shield</span>
-</a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-body text-label-sm">Claims</span>
-</a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-90 duration-200" href="#">
-<span class="material-symbols-outlined">person</span>
-<span class="font-body text-label-sm">Profile</span>
-</a>
-</nav>
+<nav class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto flex justify-around items-center px-4 py-3 bg-surface border-t border-outline-variant/20 z-50 rounded-t-xl shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"><!-- Active Tab: Insurance (Updated from Shield) -->
+  <a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#">
+    <span class="material-symbols-outlined">dashboard</span>
+    <span class="font-label text-xs font-medium">Dashboard</span>
+  </a>
+  <a class="flex flex-col items-center justify-center w-20 bg-primary-container text-on-primary-container rounded-xl px-3 py-1.5 active:scale-90 duration-150 ease-in-out" href="#">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield</span>
+    <span class="font-label text-xs font-medium">Insurance</span>
+  </a>
+  <a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#">
+    <span class="material-symbols-outlined">payments</span>
+    <span class="font-label text-xs font-medium">Payouts</span>
+  </a>
+  <a class="flex flex-col items-center justify-center w-20 text-on-surface-variant px-3 py-1.5 hover:bg-surface-variant transition-all active:scale-90 duration-150 ease-in-out" href="#">
+    <span class="material-symbols-outlined">flag</span>
+    <span class="font-label text-xs font-medium">Flags</span>
+  </a></nav>
 <script>
         // Micro-interaction for buttons
         document.querySelectorAll('button, a').forEach(el => {
